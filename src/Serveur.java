@@ -21,15 +21,31 @@ import javax.crypto.spec.SecretKeySpec;
 public class Serveur {
 	
 	private ArrayList<ClientRegistration> clients_enregistres = new ArrayList<ClientRegistration>();
-	private ServerSocket serveur_socket;
+	private ServerSocket serveurSocket;
+	private Socket clientSocket;
 	
 	public Serveur() throws IOException {
 		ServerSocket serveur_socket = new ServerSocket(PARAMETRE.port);
+		Socket client_socket = new Socket();
 	}
 	
-	// Pour l'instant le main est un echange basique client/serveur
-	public static void main(String[] args) {
-		int port = PARAMETRE.port + 1;
+
+	public static void main(String[] args) throws IOException {
+		
+		Serveur serveur = new Serveur();
+
+		while (true) {
+		    serveur.clientSocket = serveur.serveurSocket.accept(); 
+		    System.out.println("Nouveau client connecté !");
+		    
+		    // on lance un thread pour ce client
+		    new Thread(new ClientRegistration(serveur.clientSocket)).start();
+		}
+		
+		
+		
+		
+		/**int port = PARAMETRE.port + 1;
 		System.out.println("Serveur en attente sur le port " + port + "...");
 		SecretKey AES_key;
 		Cipher cipher = null;
@@ -67,7 +83,7 @@ public class Serveur {
 			System.out.println("Client déconnecté.");
 		} catch (IOException e) {
 			e.printStackTrace();
-		}
+		}**/
 	}
 
 	public static SecretKey echanger_AES() throws IOException, NoSuchAlgorithmException, ClassNotFoundException,
@@ -101,8 +117,8 @@ public class Serveur {
 	
 	
 	/**
-	 *  Demande aux clients ses informations  tout en conservant la connexion
-	 *  et en gardant également la connexion
+	 *  Demande aux clients ses informations tout en conservant la connexion
+	 *  Recupère pseudo et IP
 	 * @param serveur
 	 * @return
 	 * @throws IOException
@@ -113,29 +129,54 @@ public class Serveur {
 	 * @throws IllegalBlockSizeException
 	 * @throws BadPaddingException
 	 */
-	public static ClientRegistration registerClient(ServerSocket serveur)
+	public ClientRegistration registerClient()
 	        throws IOException, ClassNotFoundException, NoSuchAlgorithmException,
 	        NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 
-	    Socket clientSocket = serveur.accept();
+	    Socket clientSocket = this.serveur_socket.accept();
 	    ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
 	    ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
 
-	    KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-	    keyGen.initialize(2048);
-	    KeyPair keyPair = keyGen.generateKeyPair();
-
-	    out.writeObject(keyPair.getPublic());
+	    out.writeObject("register_request_pseudo");
 	    out.flush();
 
-	    byte[] aesChiffree = (byte[]) in.readObject();
-	    Cipher cipherRSA = Cipher.getInstance("RSA");
-	    cipherRSA.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
-	    byte[] aesBytes = cipherRSA.doFinal(aesChiffree);
-	    SecretKey aesKey = new SecretKeySpec(aesBytes, "AES");
+	    String pseudo = (String) in.readObject();
+	    
+	    out.writeObject("register_request_IP");
+	    out.flush();
+	    
+	    String IP = (String) in.readObject();
 
-	    System.out.println("Client connecté, clé AES échangée !");
-	    return new ClientRegistration(clientSocket, in, out, aesKey);
+	    // return new ClientRegistration(clientSocket, pseudo, IP,in, out);
+	    return null;
+	}
+	
+	
+	public boolean pseudo_is_unique(String pseudo) {
+		for (ClientRegistration fiche_client : this.clients_enregistres) {
+			if (fiche_client.pseudo.equals(pseudo)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public ClientRegistration find_by_pseudo(String pseudo) {
+		for (ClientRegistration fiche_client : this.clients_enregistres) {
+			if (fiche_client.pseudo.equals(pseudo)) {
+				return fiche_client;
+			}
+		}
+		return null;
+	}
+	
+	public ClientRegistration find_by_IP(String IP) {
+		for (ClientRegistration fiche_client : this.clients_enregistres) {
+			if (fiche_client.IP.equals(IP)) {
+				return fiche_client;
+			}
+		}
+		return null;
 	}
 	
 	/**
@@ -148,21 +189,11 @@ public class Serveur {
 	 * @throws BadPaddingException
 	 * @throws IOException
 	 */
-	public void echanger_AES_entre_client() throws InvalidKeyException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, IOException {
-		    int port = PARAMETRE.port;
-		    
+	public void echanger_AES_entre_client(ClientRegistration client1, ClientRegistration client2) throws InvalidKeyException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, IOException { 
 		    assert this.serveur_socket != null;
-
-
-		    System.out.println("En attente du premier client...");
-		    ClientRegistration client1 = registerClient(this.serveur_socket);
-		    this.clients_enregistres.add(client1);
-
-		    System.out.println("En attente du second client...");
-		    ClientRegistration client2 = registerClient(this.serveur_socket);
-		    this.clients_enregistres.add(client2);
 		    
-		    // J'ai mtn les deux clés des deux clients
+		    
+		    
 		    
 		}
 
