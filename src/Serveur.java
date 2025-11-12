@@ -39,7 +39,9 @@ public class Serveur {
 		    System.out.println("Nouveau client connecté !");
 		    
 		    // on lance un thread pour ce client
-		    new Thread(new ClientRegistration(serveur.clientSocket)).start();
+		    
+		    // ON DOIT ENCORE AJOUTER l'IP ET GENERER LE PSEUDO
+		    new Thread(new ClientRegistration("","",serveur.clientSocket, serveur)).start();
 		}
 		
 		
@@ -115,7 +117,7 @@ public class Serveur {
 
 
 	
-	
+	// BASIQUEMENT CETTE FONCTION POUR L'INSTANT SE FAIT AUTOMATIQUEMENT DANS LE MAIN
 	/**
 	 *  Demande aux clients ses informations tout en conservant la connexion
 	 *  Recupère pseudo et IP
@@ -129,11 +131,11 @@ public class Serveur {
 	 * @throws IllegalBlockSizeException
 	 * @throws BadPaddingException
 	 */
-	public ClientRegistration registerClient()
+	public ClientRegistration registerClient(Socket clientSocket)
 	        throws IOException, ClassNotFoundException, NoSuchAlgorithmException,
 	        NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 
-	    Socket clientSocket = this.serveur_socket.accept();
+
 	    ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
 	    ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
 
@@ -146,9 +148,10 @@ public class Serveur {
 	    out.flush();
 	    
 	    String IP = (String) in.readObject();
-
-	    // return new ClientRegistration(clientSocket, pseudo, IP,in, out);
-	    return null;
+	    
+	    ClientRegistration newClient = new ClientRegistration(pseudo, IP, clientSocket, this);
+	    this.clients_enregistres.add(newClient);
+	    return newClient;
 	}
 	
 	
@@ -190,9 +193,7 @@ public class Serveur {
 	 * @throws IOException
 	 */
 	public void echanger_AES_entre_client(ClientRegistration client1, ClientRegistration client2) throws InvalidKeyException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, IOException { 
-		    assert this.serveur_socket != null;
-		    
-		    
+		    assert this.serveurSocket != null;
 		    
 		    
 		}
