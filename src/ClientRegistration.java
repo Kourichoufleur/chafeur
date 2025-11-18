@@ -12,12 +12,13 @@ import java.net.Socket;
 import javax.crypto.SecretKey;
 
 public class ClientRegistration implements Runnable {
-	    public Socket socket;
-	    public InputStream in;
-	    public OutputStream out;
-	    public SecretKey aesKey;
+	    Socket socket;
+	    InputStream in;
+	    OutputStream out;
+	    SecretKey aesKey;
 		String pseudo;
 		String IP;
+		Serveur host;
 
 	    public ClientRegistration(String pseudo, String IP, Socket socket, Serveur serveur) throws IOException {
 	        this.socket = socket;
@@ -25,14 +26,20 @@ public class ClientRegistration implements Runnable {
 	        this.out = socket.getOutputStream();
 	        this.pseudo = pseudo;
 	        this.IP = IP;
+	        this.host = serveur;
 	    }
 	    
 	    
 	    // Avec ce script on peut lire ce que le client envoit et traiter les demandes.
+	    // En gros le serveur sert à faire le lien entre cette classe et la classe client de l'appareil de l'utilisateur
+	    // Toutes les instances de ClientRegistration sont faite sur le PC de l'hote
 	    // Le serveur va donc lancer des threads de cette classe ; cette classe étant ce qui "traite" la connexion
 	    
-	    // A IMPLEMENTER : je rajouterais la demande d'un pseudo (faut aussi obtenir l'IP)
-	    // Trouver un moyen de relier ça a la classe client
+	    // A IMPLEMENTER :
+	    // je rajouterais la demande d'un pseudo (faut aussi obtenir l'IP)
+	    // Quand on recevra les demandes d'envoie de message, il faudra une fonction dans la classe Serveur pour faire
+	    // le partage de clés + l'envoie du message
+	    // En gros ca va faire ClientRegistration.
 	    @Override
 	    public void run() {
 	        try {

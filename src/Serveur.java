@@ -29,7 +29,7 @@ public class Serveur {
 		Socket client_socket = new Socket();
 	}
 	
-
+	// La fonction qui sert a écouter les demandes de connexion et qui créer un Thread avec la demande 
 	public static void main(String[] args) throws IOException {
 		
 		Serveur serveur = new Serveur();
@@ -41,8 +41,16 @@ public class Serveur {
 		    // on lance un thread pour ce client
 		    
 		    // ON DOIT ENCORE AJOUTER l'IP ET GENERER LE PSEUDO
-		    new Thread(new ClientRegistration("","",serveur.clientSocket, serveur)).start();
+		    // Mais ca je propose de le gérer dans la fonction run() de la classe ClientRegistration
+		    ClientRegistration client = new ClientRegistration("","",serveur.clientSocket, serveur);
+		    serveur.clients_enregistres.add(client);
+		    Thread client_thread = new Thread(client);
+		    
+		    client_thread.start();
+		    
 		}
+	
+	// A coder : une fonction qui est appelé par ClientRegistration et qui demande d'envoyer un message via un pseudo par exemple
 		
 		
 		
