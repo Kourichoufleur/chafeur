@@ -11,7 +11,6 @@ SERVER:
 	R:"groupe_etape_3" puis il renvoie des clefs AES encrypté séparé par des |
 	qu'il faut partager à tous les gens du groupe
 	(ainsi que le nom du groupe et les bonnes clefs au bons gens)
-	E:"groupe_etape_final"
 
 	E:"groupe_etape_final" a tout le monde sauf le créateur
 
@@ -20,6 +19,7 @@ SERVER:
 
 CLIENT:
 	Thread lire la console + recevoir un message
+	(ca c'est pour moi mdr)
 
 	
 
