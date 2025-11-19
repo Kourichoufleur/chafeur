@@ -4,12 +4,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-import java.util.Random;
 import java.util.ArrayList;
 
 import javax.crypto.BadPaddingException;
@@ -18,15 +19,25 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 
 public class Client {
 	private int ID;
 	private int IP;
 	public String pseudo;
+
+	private SecretKey cle_prive;
+	private PublicKey cle_public;
+	private ArrayList<Contact> contacts;
+
 	public Client(String pseudo) {
 		this.pseudo = pseudo;
 	}
 
+	/**
+	 * Ajoute au pseudonyme le nombre en entrée. Permez d'éviter les collisions de
+	 * pseudo (cette fonction doit être appelé par le serveur s'il enregistre deux
+	 * clients aux pseudonymes identiques
 	 **/
 	public void make_unique_pseudo(int nb) {
 		this.pseudo = this.pseudo + String.valueOf(nb);
