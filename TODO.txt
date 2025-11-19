@@ -3,12 +3,17 @@ SERVER:
 	R:"init" Un client se connecte on lui demande son pseudo et sa clef publique E:"init"
 
 		
-	R:"groupe_etape_1" Un client créer un groupe il demande la clef publique de tous les pseudos dans le groupe (sauf lui) 
-	E:"groupe_etape_2" démerde toi pour envoyer un message avec toutes les infos bien séparer
+	R:"groupe_etape_1" Un client créer un groupe il demande la clef publique de tous les pseudos dans le groupe (sauf lui)
+	le client envoie la liste des membres (saufs lui) séparer par des pipes 
+	E:"groupe_etape_2" démerde toi pour envoyer un message avec toutes les infos bien séparer avec des |  
+	et le nom du groupe à la place de la case pseudo la gestion de l'unicité du nom se fera avant dis moi comment tu fais
 
-	R:"groupe_etape_3" puis il renvoie une clef AES encrypté qu'il faut partager à tous les gens du groupe
+	R:"groupe_etape_3" puis il renvoie des clefs AES encrypté séparé par des |
+	qu'il faut partager à tous les gens du groupe
 	(ainsi que le nom du groupe et les bonnes clefs au bons gens)
 	E:"groupe_etape_final"
+
+	E:"groupe_etape_final" a tout le monde sauf le créateur
 
 
 	faut aussi gerer le chat général qui est juste un groupe ou y a tout le monde de base
@@ -16,14 +21,6 @@ SERVER:
 CLIENT:
 	Thread lire la console + recevoir un message
 
-	fonction_creer_groupe (Liste amis ) E:"groupe_etape_1"
-
-	R:"groupe_etape_2" Créer une aes encode avec toutes les clefs publiques 
-	E:"groupe_etape3"envoie tout en un message
-	
-
-	R:"groupe_etape_final" metre la clef dans la liste des contacts et
-	ouvrir un nouveau thread pour le groupe?
 	
 
 	
