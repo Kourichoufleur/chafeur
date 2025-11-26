@@ -1,5 +1,4 @@
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -24,14 +23,12 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
-public class Client {
-	private int ID;
-	private int IP;
-	public String pseudo;
+public class Client implements Runnable {
+	public volatile String pseudo;
 
-	private PrivateKey cle_prive;
-	private PublicKey cle_public;
-	private ArrayList<Contact> contacts = new ArrayList<Contact>();
+	private volatile PrivateKey cle_prive;
+	private volatile PublicKey cle_public;
+	private volatile ArrayList<Contact> contacts = new ArrayList<Contact>();
 
 	public Client(String pseudo)
 			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
@@ -50,58 +47,8 @@ public class Client {
 		System.out.println("Votre pseudo a dû être modifié en " + this.pseudo);
 	}
 
-	public static void main(String[] args) {
-		String host = PARAMETRE.host;
-		int port = PARAMETRE.port + 1;
-		SecretKey AES_key;
-		Cipher cipher = null;
-		try {
-			AES_key = echanger_AES();
-			cipher = Cipher.getInstance("AES");
-			cipher.init(Cipher.ENCRYPT_MODE, AES_key);
-		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException
-				| BadPaddingException | ClassNotFoundException | IOException e) {
-			e.printStackTrace();
-		}
-		boolean attendre = true;
-		while (attendre) {
-			try (Socket socket = new Socket(host, port);
-					BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
-					DataOutputStream out = new DataOutputStream(socket.getOutputStream());) {
-				attendre = false;
-				System.out.println("Connecté au serveur sur " + host + ":" + port);
-				System.out.println("Tape un message (ou 'bye' pour quitter) :");
-
-				String message;
-				while ((message = console.readLine()) != null) {
-					if (message.equalsIgnoreCase("bye")) {
-						out.writeInt(0);
-						out.flush();
-						break;
-					}
-					try {
-						byte[] encrypte = cipher.doFinal(message.getBytes());
-						out.writeInt(encrypte.length);
-						out.write(encrypte);
-						out.flush();
-					} catch (IllegalBlockSizeException | BadPaddingException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-
-				}
-				System.out.println("Client déconnecté.");
-			} catch (IOException e) {
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-					e.printStackTrace();
-				}
-
-			}
-		}
+	private static String demander_pseudo() {
+		return "Dieu tout puissant venerer par tous";
 	}
 
 	public static SecretKey echanger_AES()
@@ -271,6 +218,57 @@ public class Client {
 
 		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
 				| BadPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
+	@Override
+	public void run() {
+		String host = PARAMETRE.host;
+		int port = PARAMETRE.port;
+		// tentative de conexion au serveur
+		try (Socket socket = new Socket(host, port);
+				BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));) {
+			String message;
+			while ((message = in.readLine()) != null) {
+				this.recevoir_message(message);
+
+			}
+
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
+	public static void main(String[] args)
+			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
+			IllegalBlockSizeException, BadPaddingException, ClassNotFoundException, IOException {
+		Client moi = new Client(Client.demander_pseudo());
+		Thread moi_thread = new Thread(moi);
+		moi_thread.start();
+
+		BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
+		String message;
+		String a_qui = "Louis";
+		try {
+			while ((message = console.readLine()) != null) {
+				if (message.equalsIgnoreCase("bye")) {
+				}
+				try {
+					moi.envoie_message("MESSAGE_TO", a_qui, message);
+				} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
