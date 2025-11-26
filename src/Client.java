@@ -9,10 +9,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
 
@@ -29,15 +26,12 @@ public class Client {
 	private int IP;
 	public String pseudo;
 
-	private PrivateKey cle_prive;
+	private SecretKey cle_prive;
 	private PublicKey cle_public;
-	private ArrayList<Contact> contacts = new ArrayList<Contact>();
+	private ArrayList<Contact> contacts;
 
-	public Client(String pseudo)
-			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
-			IllegalBlockSizeException, BadPaddingException, ClassNotFoundException, IOException {
+	public Client(String pseudo) {
 		this.pseudo = pseudo;
-		register();
 	}
 
 	/**
@@ -137,15 +131,30 @@ public class Client {
 	public void register() throws UnknownHostException, IOException, NoSuchAlgorithmException, NoSuchPaddingException,
 			InvalidKeyException, IllegalBlockSizeException, BadPaddingException, ClassNotFoundException {
 		assert this.pseudo != null && this.pseudo.length() > 1; // Un pseudo doit etre présent avec de se register
-		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-		keyGen.initialize(2048);
-		KeyPair keyPair = keyGen.generateKeyPair();
 
-		this.cle_public = keyPair.getPublic();
-		this.cle_prive = keyPair.getPrivate();
+		String host = PARAMETRE.host;
+		int port = PARAMETRE.port;
+		Socket socket = new Socket(host, port);
 
-		this.envoie_message("CONNECT", "server",
-				this.pseudo + "|" + new String(this.cle_public.getEncoded(), StandardCharsets.UTF_8));
+		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+		ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+
+		// On récupère la clé du serveur
+		PublicKey rsaPublique = (PublicKey) in.readObject();
+
+		KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+		keyGen.init(128);
+		SecretKey aesKey = keyGen.generateKey();
+
+		Cipher cipherRSA = Cipher.getInstance("RSA");
+		cipherRSA.init(Cipher.ENCRYPT_MODE, rsaPublique);
+		byte[] aesChiffree = cipherRSA.doFinal(aesKey.getEncoded());
+
+		out.writeObject(aesChiffree);
+		out.flush();
+
+		System.out.println("Clé AES envoyée au serveur ! Vous êtes à présent enregistré");
+
 	}
 
 	public void creer_groupe(String nom, ArrayList<String> liste_ami) {
@@ -197,7 +206,7 @@ public class Client {
 							cipher.init(Cipher.ENCRYPT_MODE, mon_ami.la_clef);
 							byte[] encrypte = cipher.doFinal(message.getBytes());
 							if (intitule.equals(null)) {
-								intitule = "MESSAGE";
+								intitule = "message";
 							}
 							out.println(intitule + "|" + mon_ami.pseudo + "|"
 									+ new String(encrypte, StandardCharsets.UTF_8));
