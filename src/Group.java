@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 public class Group {
     String nom_groupe;
     ArrayList<ClientRegistration> membres;

@@ -31,7 +31,7 @@ public class Serveur {
 	private Socket clientSocket;
 
 	private ArrayList<Group> groupes_enregistres = new ArrayList<Group>();
-	private Group groupe_general;
+	Group groupe_general;
 	
 	public Serveur() throws IOException {
 		ServerSocket serveur_socket = new ServerSocket(PARAMETRE.port);
@@ -42,7 +42,7 @@ public class Serveur {
 	public static void main(String[] args) throws IOException {
 		
 		Serveur serveur = new Serveur();
-		Groupe groupe_general = new Groupe("Général");
+		Group groupe_general = new Group("Général");
 		serveur.groupes_enregistres.add(groupe_general);
 		serveur.groupe_general = groupe_general;
 		serveur.serveurSocket = new ServerSocket(PARAMETRE.port);
@@ -223,7 +223,6 @@ public class Serveur {
 		return null;
 	}
 
-	public 
 	
 	/**
 	 * Permet de créer une connexion client/serveur entre deux clients, et par la même occasion d'échanger leurs clés
@@ -235,11 +234,7 @@ public class Serveur {
 	 * @throws BadPaddingException
 	 * @throws IOException
 	 */
-	public void echanger_AES_entre_client(ClientRegistration client1, ClientRegistration client2) throws InvalidKeyException, ClassNotFoundException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException, IOException { 
-		    assert this.serveurSocket != null;
-		    
-		    
-		}
+
 
 }
 	
