@@ -25,6 +25,7 @@ public class ClientRegistration implements Runnable {
 	        this.in = socket.getInputStream();
 	        this.out = socket.getOutputStream();
 	        this.pseudo = pseudo;
+			this.cle_public = cle_public;
 	        this.IP = IP;
 	        this.host = serveur;
 	    }
@@ -45,14 +46,63 @@ public class ClientRegistration implements Runnable {
 	        try {
 	            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 	            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-	            
-	            out.println("Bienvenue !"); // OUT.PRINTLN = envoyer au client le message suivant
-	            String message;
-	            while ((message = in.readLine()) != null) {
-	                System.out.println("Message reçu : " + message);
-	                out.println("Reçu : " + message); // renvoie au client
-	            }
-	            
+				String message;
+				while ((message = in.readLine()) != null) {
+					// Attente que le client envoie quelque chose
+
+					message_slitted = message.split("|", 1);
+					type_message = message_slitted[0];
+					if type_message == "CONNECT": // CONNEXT|Server|pseudo|cle_publique
+						new_split = message_slitted[1].split("|", 3);
+						// new_split[0] est inutile ici
+						String clientPseudo = new_split[1];
+						String clientClePublique = new_split[2];
+						this.pseudo = serveur.rendre_unique(clientPseudo);
+						this.cle_public = clientClePublique;
+
+
+						if (!this.pseudo.equals(clientPseudo)) {
+							out.println("Le pseudo '" + clientPseudo + "' est déjà pris. Votre nouveau pseudo est : " + this.pseudo);
+						} else {
+							out.println("Votre pseudo '" + this.pseudo + "' a été enregistré avec succès.");
+						}
+
+						serveur.groupe_general.ajouter_membre(this);
+					
+					else if type_message == "MESSAGE_TO": // MESSAGE|destinataire|contenu_message
+						// Gérer l'envoie de message
+						new_split = message_slitted[1].split("|", 2);
+						String destinataire = new_split[0];
+						String contenu_message = new_split[1];
+						ClientRegistration client_destinataire = serveur.find_by_pseudo(destinataire);
+						if (client_destinataire != null) {
+							PrintWriter out_destinataire = new PrintWriter(client_destinataire.socket.getOutputStream(), true);
+							out_destinataire.println("MESSAGE_FROM|" + this.pseudo + "|MP|" + contenu_message);
+						} else {
+							// On cherche si c'est un groupe
+							Group group_destinataire = serveur.find_group_by_name(destinataire);
+							if (group_destinataire != null) {
+								// Envoyer le message à tous les membres du groupe
+								for (ClientRegistration membre : group_destinataire.get_membres()) {
+									if (!membre.pseudo.equals(this.pseudo)) { // Ne pas renvoyer au sender
+										PrintWriter out_membre = new PrintWriter(membre.socket.getOutputStream(), true);
+										out_membre.println("MESSAGE_FROM|" + this.pseudo + "|" + group_destinataire.nom + "|" + destinataire + "|" + contenu_message);
+									}
+								}
+							} else {
+								out.println("Erreur : destinataire '" + destinataire + "' non trouvé.");
+							}
+						}
+
+					else if type_message == "DISCONNECT": // DISCONNECT
+						break;
+						// Gérer la déconnexion
+
+
+					
+				
+	            // Maintenant on récupère sa clé publique sans demandé à l'utilisateur 
+
 	        } catch (IOException e) {
 	            e.printStackTrace();
 	        } finally {

@@ -18,11 +18,20 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+// TOUTES LES COMMANDES DIFFERENTES :
+// MESSAGE_TO | destinataire (peut etre un groupe et si null alors chat global) | contenu_message
+// MESSAGE_FROM_MP|expediteur|contenu_message
+// MESSAGE_FROM_GROUP|expediteur|groupe|contenu_message
+// CONNECT|"Server"|pseudo|cle_publique
+// DISCONNECT
 public class Serveur {
 	
 	private ArrayList<ClientRegistration> clients_enregistres = new ArrayList<ClientRegistration>();
 	private ServerSocket serveurSocket;
 	private Socket clientSocket;
+
+	private ArrayList<Group> groupes_enregistres = new ArrayList<Group>();
+	private Group groupe_general;
 	
 	public Serveur() throws IOException {
 		ServerSocket serveur_socket = new ServerSocket(PARAMETRE.port);
@@ -33,6 +42,10 @@ public class Serveur {
 	public static void main(String[] args) throws IOException {
 		
 		Serveur serveur = new Serveur();
+		Groupe groupe_general = new Groupe("Général");
+		serveur.groupes_enregistres.add(groupe_general);
+		serveur.groupe_general = groupe_general;
+		serveur.serveurSocket = new ServerSocket(PARAMETRE.port);
 
 		while (true) {
 		    serveur.clientSocket = serveur.serveurSocket.accept(); 
@@ -40,7 +53,6 @@ public class Serveur {
 		    
 		    // on lance un thread pour ce client
 		    
-		    // ON DOIT ENCORE AJOUTER l'IP ET GENERER LE PSEUDO
 		    // Mais ca je propose de le gérer dans la fonction run() de la classe ClientRegistration
 		    ClientRegistration client = new ClientRegistration("","",serveur.clientSocket, serveur);
 		    serveur.clients_enregistres.add(client);
@@ -139,6 +151,8 @@ public class Serveur {
 	 * @throws IllegalBlockSizeException
 	 * @throws BadPaddingException
 	 */
+
+
 	public ClientRegistration registerClient(Socket clientSocket)
 	        throws IOException, ClassNotFoundException, NoSuchAlgorithmException,
 	        NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
@@ -171,6 +185,25 @@ public class Serveur {
 		}
 		return true;
 	}
+
+	public String rendre_unique(String pseudo_initial) {
+		String pseudo_test = pseudo_initial;
+		int compteur = 1;
+		while (!this.pseudo_is_unique(pseudo_test)) {
+			pseudo_test = pseudo_initial + "_" + compteur;
+			compteur += 1;
+		}
+		return pseudo_test;
+	}
+
+	public Group find_group_by_name(String nom_groupe) {
+		for (Group group : this.groupes_enregistres) {
+			if (group.nom_groupe.equals(nom_groupe)) {
+				return group;
+			}
+		}
+		return null;
+	}
 	
 	public ClientRegistration find_by_pseudo(String pseudo) {
 		for (ClientRegistration fiche_client : this.clients_enregistres) {
@@ -189,6 +222,8 @@ public class Serveur {
 		}
 		return null;
 	}
+
+	public 
 	
 	/**
 	 * Permet de créer une connexion client/serveur entre deux clients, et par la même occasion d'échanger leurs clés
