@@ -12,7 +12,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Base64;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -30,6 +30,7 @@ public class Client {
 	private PrivateKey cle_prive;
 	private PublicKey cle_public;
 	private ArrayList<Contact> contacts = new ArrayList<Contact>();
+	static final String SEP = PARAMETRE.SEP;
 
 	public Client(String pseudo)
 			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
@@ -64,9 +65,11 @@ public class Client {
 			String message;
 			try {
 				while ((message = in.readLine()) != null) {
+
 					moi.recevoir_message(message, out);
+
 				}
-			} catch (IOException e) {
+			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
@@ -77,8 +80,20 @@ public class Client {
 			String message;
 			try {
 				while ((message = console.readLine()) != null) {
-					moi.envoie_message("MESSAGE_TO", "", message, out); // on met "" car pour l'instant on envoit au
-																		// groupe global
+					if (message.equalsIgnoreCase("bye")) {
+						socket.close();
+						System.out.println("Au revoir et à bientôt :DD");
+					} else if (message.toLowerCase().equals("quoi") || message.toLowerCase().equals("quoi?")
+							|| message.toLowerCase().equals("quoi ?")) {
+						System.out.println("Feur !");
+						moi.envoie_message("MESSAGE_TO", "global",
+								"Je suis un gros nullos qui a dit quoi dites moi tous feur !", out);
+					} else {
+						System.out.print(moi.pseudo + " : "); // au
+						moi.envoie_message("MESSAGE_TO", "global", message, out); // on met "" car pour l'instant on
+																					// envoit
+					}
+					// groupe global
 
 				}
 			} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IOException e) {
@@ -128,12 +143,14 @@ public class Client {
 		System.out.println("Choisissez votre peusdo : ");
 		String pseudo = clavier_console.readLine();
 		if (pseudo.equals("")) {
-			System.out.println("Tu t'appeleras Gabriel alors");
+			System.out.println("Tu t'appeleras Gabriel alors ahah");
 			pseudo = "Gabriel";
 		}
-		this.envoie_message("CONNECT", "server", pseudo + "|" + Arrays.toString(this.cle_public.getEncoded()), out);
+		this.envoie_message("CONNECT", "server",
+				pseudo + SEP + Base64.getEncoder().encodeToString(this.cle_public.getEncoded()), out);
 
 		recevoir_message(in.readLine(), out);
+		System.out.println("Bienvenu dans le chafeur:");
 
 	}
 
@@ -141,7 +158,7 @@ public class Client {
 		try {
 			String mes_amis = "";
 			for (String ami : liste_ami) {
-				mes_amis += ami + "|";
+				mes_amis += ami + SEP;
 			}
 			this.envoie_message("groupe_etape_1", nom, mes_amis, out);
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e) {
@@ -154,20 +171,19 @@ public class Client {
 	public void envoie_message(String intitule, String destinataire, String message, PrintWriter out)
 			throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
 		if (destinataire.equals("server")) {
-			System.out.println("youhou serveur es-tu la");
-			out.println(intitule + "|" + this.pseudo + "|server|" + message);
+			out.println(intitule + SEP + this.pseudo + SEP + "server" + SEP + message);
 		} else {
 			for (Contact mon_ami : contacts) {// recherche de mon ami
 				if (mon_ami.pseudo.equals(destinataire)) {// si j'ai un ami
 					try {
-						Cipher cipher = Cipher.getInstance("AES");
+						Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 						cipher.init(Cipher.ENCRYPT_MODE, mon_ami.la_clef);
 						byte[] encrypte = cipher.doFinal(message.getBytes());
 						if (intitule.equals(null)) {
-							intitule = "MESSAGE_FROM";
+							intitule = "MESSAGE_TO";
 						}
-						out.println(intitule + "|" + this.pseudo + "|" + destinataire + "|"
-								+ new String(encrypte, StandardCharsets.UTF_8));
+						out.println(intitule + SEP + this.pseudo + SEP + destinataire + SEP
+								+ Base64.getEncoder().encodeToString(encrypte));
 					} catch (IllegalBlockSizeException | BadPaddingException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -180,26 +196,27 @@ public class Client {
 		}
 	}
 
-	public void recevoir_message(String message, PrintWriter out) {
+	public void recevoir_message(String message, PrintWriter out) throws Exception {
 		try {
-			System.out.println("Vous avez reçu un message !");
 			boolean cond = true;
-			String[] decoupe = message.split("\\|", 4);
+			String[] decoupe = message.split(SEP, 4);
 			switch (decoupe[0]) {
 			case "SET_PSEUDO":
-				String new_pseudo = decoupe[3];
-				this.pseudo = new_pseudo;
+				String[] pseudo_et_cle = decoupe[3].split(SEP);
+				this.pseudo = pseudo_et_cle[0];
+				this.contacts.add(new Contact("global", funcs.RSA_DECRYPT(pseudo_et_cle[1], this.cle_prive)));
 				System.out.println("Votre pseudo a été définit comme étant : " + this.pseudo);
 				break;
 			case "MESSAGE_FROM":
 
 				for (Contact mon_ami : contacts) {
-					if (mon_ami.pseudo.equals(decoupe[1])) {
+					if (mon_ami.pseudo.equals(decoupe[2])) {
 						// Decrypte le message et l'affiche
-						Cipher cipher = Cipher.getInstance("AES");
+						Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 						cipher.init(Cipher.DECRYPT_MODE, mon_ami.la_clef);
-						byte[] valeur = decoupe[2].getBytes(StandardCharsets.UTF_8);
-						System.out.println(mon_ami.pseudo + ":\n" + cipher.doFinal(valeur));
+						byte[] valeur = Base64.getDecoder().decode(decoupe[3]);
+						System.out.println(mon_ami.pseudo + " " + decoupe[1] + ": "
+								+ new String(cipher.doFinal(valeur), StandardCharsets.UTF_8));
 						cond = false;
 						break;
 
@@ -219,10 +236,10 @@ public class Client {
 				contacts.add(new Contact(decoupe[1], aesKey));
 				String liste_clefs = "";
 				Cipher cipher = Cipher.getInstance("RSA");
-				for (String clef_public : decoupe[2].split("\\|")) {
+				for (String clef_public : decoupe[2].split(SEP)) {
 					cipher.init(Cipher.ENCRYPT_MODE,
 							new SecretKeySpec(clef_public.getBytes(StandardCharsets.UTF_8), "RSA"));
-					liste_clefs += cipher.doFinal(aesKey.getEncoded()) + "|";
+					liste_clefs += cipher.doFinal(aesKey.getEncoded()) + SEP;
 
 				}
 				this.envoie_message("groupe_etape_3", decoupe[1], liste_clefs, out);

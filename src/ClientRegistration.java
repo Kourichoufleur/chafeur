@@ -19,6 +19,7 @@ public class ClientRegistration implements Runnable {
 	String IP;
 	Serveur host;
 	String cle_public;
+	static final String SEP = PARAMETRE.SEP;
 
 	public ClientRegistration(String pseudo, String IP, Socket socket, Serveur serveur) throws IOException {
 		this.socket = socket;
@@ -53,31 +54,32 @@ public class ClientRegistration implements Runnable {
 				System.out.println("J'ai recu " + message);
 				// Attente que le client envoie quelque chose
 
-				String[] message_slitted = message.split("\\|", 4);
+				String[] message_slitted = message.split(SEP, 4);
 				String type_message = message_slitted[0];
 				System.out.println(type_message);
 				System.out.println(Arrays.toString(message_slitted));
 				if (type_message.equals("CONNECT")) { // CONNEXT|Gabriel|Server|((pseudo|cle_publique)) -> Contenu
 					System.out.println("Tentative de connexion");
-					String[] new_split = message_slitted[3].split("\\|");
+					String[] new_split = message_slitted[3].split(SEP);
 					String clientPseudo = new_split[0];
 					String clientClePublique = new_split[1];
 					this.pseudo = this.host.rendre_unique(clientPseudo);
 					this.cle_public = clientClePublique;
 
-					out.println("SET_PSEUDO|server||" + this.pseudo);
+					out.println("SET_PSEUDO" + SEP + "server" + SEP + SEP + this.pseudo + SEP
+							+ funcs.RSA_ENCRYPT(host.groupe_general.cle_secrete, clientClePublique));
 
 					host.groupe_general.ajouter_membre(this);
-				} else if (type_message.equals("MESSAGE_TO")) { // MESSAGE|destinataire|contenu_message
+				} else if (type_message.equals("MESSAGE_TO")) { // MESSAGE|de_qui|destinataire|contenu_message
 					// Gérer l'envoie de message
-					String[] new_split = message_slitted[1].split("|", 2);
-					String destinataire = new_split[0];
-					String contenu_message = new_split[1];
+					String destinataire = message_slitted[2];
+					String contenu_message = message_slitted[3];
 					ClientRegistration client_destinataire = host.find_by_pseudo(destinataire);
 					if (client_destinataire != null) {
 						PrintWriter out_destinataire = new PrintWriter(client_destinataire.socket.getOutputStream(),
 								true);
-						out_destinataire.println("MESSAGE_FROM|" + this.pseudo + "|MP|" + contenu_message);
+						out_destinataire.println(
+								"MESSAGE_FROM" + SEP + this.pseudo + SEP + destinataire + SEP + contenu_message);
 					} else {
 						// On cherche si c'est un groupe
 						Group group_destinataire = host.find_group_by_name(destinataire);
@@ -86,9 +88,8 @@ public class ClientRegistration implements Runnable {
 							for (ClientRegistration membre : group_destinataire.get_membres()) {
 								if (!membre.pseudo.equals(this.pseudo)) { // Ne pas renvoyer au sender
 									PrintWriter out_membre = new PrintWriter(membre.socket.getOutputStream(), true);
-									out_membre
-											.println("MESSAGE_FROM|" + this.pseudo + "|" + group_destinataire.nom_groupe
-													+ "|" + destinataire + "|" + contenu_message);
+									out_membre.println("MESSAGE_FROM" + SEP + this.pseudo + SEP
+											+ group_destinataire.nom_groupe + SEP + contenu_message);
 								}
 							}
 						} else {
@@ -105,7 +106,7 @@ public class ClientRegistration implements Runnable {
 
 			// Maintenant on récupère sa clé publique sans demandé à l'utilisateur
 
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			try {

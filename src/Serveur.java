@@ -38,10 +38,10 @@ public class Serveur {
 
 	// La fonction qui sert a écouter les demandes de connexion et qui créer un
 	// Thread avec la demande
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
 
 		Serveur serveur = new Serveur();
-		Group groupe_general = new Group("Général");
+		Group groupe_general = new Group("global");
 		serveur.groupes_enregistres.add(groupe_general);
 		serveur.groupe_general = groupe_general;
 
