@@ -1,9 +1,6 @@
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.UnknownHostException;
@@ -15,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -37,7 +35,7 @@ public class Client {
 			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
 			IllegalBlockSizeException, BadPaddingException, ClassNotFoundException, IOException {
 		this.pseudo = pseudo;
-		register();
+
 	}
 
 	/**
@@ -50,111 +48,102 @@ public class Client {
 		System.out.println("Votre pseudo a dû être modifié en " + this.pseudo);
 	}
 
-	public static void main(String[] args) {
-		String host = PARAMETRE.host;
-		int port = PARAMETRE.port + 1;
-		SecretKey AES_key;
-		Cipher cipher = null;
-		try {
-			AES_key = echanger_AES();
-			cipher = Cipher.getInstance("AES");
-			cipher.init(Cipher.ENCRYPT_MODE, AES_key);
-		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException
-				| BadPaddingException | ClassNotFoundException | IOException e) {
-			e.printStackTrace();
-		}
-		boolean attendre = true;
-		while (attendre) {
-			try (Socket socket = new Socket(host, port);
-					BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
-					DataOutputStream out = new DataOutputStream(socket.getOutputStream());) {
-				attendre = false;
-				System.out.println("Connecté au serveur sur " + host + ":" + port);
-				System.out.println("Tape un message (ou 'bye' pour quitter) :");
-
-				String message;
-				while ((message = console.readLine()) != null) {
-					if (message.equalsIgnoreCase("bye")) {
-						out.writeInt(0);
-						out.flush();
-						break;
-					}
-					try {
-						byte[] encrypte = cipher.doFinal(message.getBytes());
-						out.writeInt(encrypte.length);
-						out.write(encrypte);
-						out.flush();
-					} catch (IllegalBlockSizeException | BadPaddingException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-
-				}
-				System.out.println("Client déconnecté.");
-			} catch (IOException e) {
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-					e.printStackTrace();
-				}
-
-			}
-		}
-	}
-
-	public static SecretKey echanger_AES()
-			throws UnknownHostException, IOException, NoSuchAlgorithmException, NoSuchPaddingException,
-			InvalidKeyException, IllegalBlockSizeException, BadPaddingException, ClassNotFoundException {
-
+	public static void main(String[] args) throws Exception {
 		String host = PARAMETRE.host;
 		int port = PARAMETRE.port;
+		Client moi = new Client("Gabriel");
 		Socket socket = new Socket(host, port);
-		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-		ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+		BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
+		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+		PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+		moi.register(out, console, in);
 
-		// On reçoit la clé publique du serveur
-		PublicKey rsaPublique = (PublicKey) in.readObject();
+		// out =
+		// BufferedReader in =
+		Thread ecoute = new Thread(() -> { // ceci est un thread
+			String message;
+			try {
+				while ((message = in.readLine()) != null) {
+					moi.recevoir_message(message, out);
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
-		// On génère sa clé privée
-		KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-		keyGen.init(128);
-		SecretKey aesKey = keyGen.generateKey();
+		});
+		ecoute.start();
+		Thread clavier = new Thread(() -> {// ceci est un thread mais pas le meme
+			String message;
+			try {
+				while ((message = console.readLine()) != null) {
+					moi.envoie_message("MESSAGE_TO", "", message, out); // on met "" car pour l'instant on envoit au
+																		// groupe global
 
-		Cipher cipherRSA = Cipher.getInstance("RSA");
-		cipherRSA.init(Cipher.ENCRYPT_MODE, rsaPublique);
-		byte[] aesChiffree = cipherRSA.doFinal(aesKey.getEncoded());
+				}
+			} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
-		out.writeObject(aesChiffree);
-		out.flush();
+		});
+		clavier.start();
 
-		System.out.println("Clé AES envoyée au serveur !");
-		return aesKey;
 	}
 
+	/**
+	 * public static SecretKey echanger_AES() throws UnknownHostException,
+	 * IOException, NoSuchAlgorithmException, NoSuchPaddingException,
+	 * InvalidKeyException, IllegalBlockSizeException, BadPaddingException,
+	 * ClassNotFoundException {
+	 * 
+	 * String host = PARAMETRE.host; int port = PARAMETRE.port; Socket socket = new
+	 * Socket(host, port); ObjectOutputStream out = new
+	 * ObjectOutputStream(socket.getOutputStream()); ObjectInputStream in = new
+	 * ObjectInputStream(socket.getInputStream());
+	 * 
+	 * // On reçoit la clé publique du serveur PublicKey rsaPublique = (PublicKey)
+	 * in.readObject();
+	 * 
+	 * // On génère sa clé privée KeyGenerator keyGen =
+	 * KeyGenerator.getInstance("AES"); keyGen.init(128); SecretKey aesKey =
+	 * keyGen.generateKey();
+	 * 
+	 * Cipher cipherRSA = Cipher.getInstance("RSA");
+	 * cipherRSA.init(Cipher.ENCRYPT_MODE, rsaPublique); byte[] aesChiffree =
+	 * cipherRSA.doFinal(aesKey.getEncoded());
+	 * 
+	 * out.writeObject(aesChiffree); out.flush();
+	 * 
+	 * System.out.println("Clé AES envoyée au serveur !"); return aesKey; }
+	 **/
+
 	// Se connecte au serveur avec le port en paramètre
-	public void register() throws UnknownHostException, IOException, NoSuchAlgorithmException, NoSuchPaddingException,
-			InvalidKeyException, IllegalBlockSizeException, BadPaddingException, ClassNotFoundException {
-		assert this.pseudo != null && this.pseudo.length() > 1; // Un pseudo doit etre présent avec de se register
+	public void register(PrintWriter out, BufferedReader clavier_console, BufferedReader in) throws Exception {
 		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
 		keyGen.initialize(2048);
 		KeyPair keyPair = keyGen.generateKeyPair();
-
 		this.cle_public = keyPair.getPublic();
 		this.cle_prive = keyPair.getPrivate();
+		System.out.println("Choisissez votre peusdo : ");
+		String pseudo = clavier_console.readLine();
+		if (pseudo.equals("")) {
+			System.out.println("Tu t'appeleras Gabriel alors");
+			pseudo = "Gabriel";
+		}
+		this.envoie_message("CONNECT", "server", pseudo + "|" + Arrays.toString(this.cle_public.getEncoded()), out);
 
-		this.envoie_message("CONNECT", "server",
-				this.pseudo + "|" + new String(this.cle_public.getEncoded(), StandardCharsets.UTF_8));
+		recevoir_message(in.readLine(), out);
+
 	}
 
-	public void creer_groupe(String nom, ArrayList<String> liste_ami) {
+	public void creer_groupe(String nom, ArrayList<String> liste_ami, PrintWriter out) {
 		try {
 			String mes_amis = "";
 			for (String ami : liste_ami) {
 				mes_amis += ami + "|";
 			}
-			this.envoie_message("groupe_etape_1", nom, mes_amis);
+			this.envoie_message("groupe_etape_1", nom, mes_amis, out);
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -162,68 +151,48 @@ public class Client {
 
 	}
 
-	public void envoie_message(String intitule, String pseudo, String message)
+	public void envoie_message(String intitule, String destinataire, String message, PrintWriter out)
 			throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
-		if (pseudo.equals("server")) {
-			String host = PARAMETRE.host;
-			int port = PARAMETRE.port;
-			try (Socket socket = new Socket(host, port);
-					PrintWriter out = new PrintWriter(socket.getOutputStream(), true);) {
-
-				System.out.println("Connecté au serveur sur " + host + ":" + port);
-				out.println(intitule + "|server|" + message);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+		if (destinataire.equals("server")) {
+			System.out.println("youhou serveur es-tu la");
+			out.println(intitule + "|" + this.pseudo + "|server|" + message);
 		} else {
 			for (Contact mon_ami : contacts) {// recherche de mon ami
-				if (mon_ami.pseudo.equals(pseudo)) {// si j'ai un ami
-					String host = PARAMETRE.host;
-					int port = PARAMETRE.port;
-					// tentative de conexion au serveur
-					try (Socket socket = new Socket(host, port);
-							PrintWriter out = new PrintWriter(socket.getOutputStream(), true);) {
-
-						System.out.println("Connecté au serveur sur " + host + ":" + port);
-						System.out.println("Tape un message (ou 'bye' pour quitter) :");
-
-						if (message.equalsIgnoreCase("bye")) {
-							out.println("bye||");
-							int[] tab = { 0 };
-							int bidule = tab[1];// euh non mais tkt
+				if (mon_ami.pseudo.equals(destinataire)) {// si j'ai un ami
+					try {
+						Cipher cipher = Cipher.getInstance("AES");
+						cipher.init(Cipher.ENCRYPT_MODE, mon_ami.la_clef);
+						byte[] encrypte = cipher.doFinal(message.getBytes());
+						if (intitule.equals(null)) {
+							intitule = "MESSAGE_FROM";
 						}
-						try {
-							Cipher cipher = Cipher.getInstance("AES");
-							cipher.init(Cipher.ENCRYPT_MODE, mon_ami.la_clef);
-							byte[] encrypte = cipher.doFinal(message.getBytes());
-							if (intitule.equals(null)) {
-								intitule = "MESSAGE";
-							}
-							out.println(intitule + "|" + mon_ami.pseudo + "|"
-									+ new String(encrypte, StandardCharsets.UTF_8));
-						} catch (IllegalBlockSizeException | BadPaddingException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-
-					} catch (IOException e) {
+						out.println(intitule + "|" + this.pseudo + "|" + destinataire + "|"
+								+ new String(encrypte, StandardCharsets.UTF_8));
+					} catch (IllegalBlockSizeException | BadPaddingException e) {
+						// TODO Auto-generated catch block
 						e.printStackTrace();
-					} catch (IndexOutOfBoundsException e) {
-						System.out.println("Je suis parti");
 					}
 
 				}
-			}
-		}
 
+			}
+
+		}
 	}
 
-	public void recevoir_message(String message) {
+	public void recevoir_message(String message, PrintWriter out) {
 		try {
+			System.out.println("Vous avez reçu un message !");
 			boolean cond = true;
-			String[] decoupe = message.split("|", 3);
+			String[] decoupe = message.split("\\|", 4);
 			switch (decoupe[0]) {
-			case "message":
+			case "SET_PSEUDO":
+				String new_pseudo = decoupe[3];
+				this.pseudo = new_pseudo;
+				System.out.println("Votre pseudo a été définit comme étant : " + this.pseudo);
+				break;
+			case "MESSAGE_FROM":
+
 				for (Contact mon_ami : contacts) {
 					if (mon_ami.pseudo.equals(decoupe[1])) {
 						// Decrypte le message et l'affiche
@@ -250,13 +219,13 @@ public class Client {
 				contacts.add(new Contact(decoupe[1], aesKey));
 				String liste_clefs = "";
 				Cipher cipher = Cipher.getInstance("RSA");
-				for (String clef_public : decoupe[2].split("|")) {
+				for (String clef_public : decoupe[2].split("\\|")) {
 					cipher.init(Cipher.ENCRYPT_MODE,
 							new SecretKeySpec(clef_public.getBytes(StandardCharsets.UTF_8), "RSA"));
 					liste_clefs += cipher.doFinal(aesKey.getEncoded()) + "|";
 
 				}
-				this.envoie_message("groupe_etape_3", decoupe[1], liste_clefs);
+				this.envoie_message("groupe_etape_3", decoupe[1], liste_clefs, out);
 
 			case "groupe_etape_final":
 				// création du groupe
