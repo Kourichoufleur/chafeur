@@ -1,0 +1,240 @@
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.security.InvalidKeyException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+
+// TOUTES LES COMMANDES DIFFERENTES :
+// MESSAGE_TO | destinataire (peut etre un groupe et si null alors chat global) | contenu_message
+// MESSAGE_FROM_MP|expediteur|contenu_message
+// MESSAGE_FROM_GROUP|expediteur|groupe|contenu_message
+// CONNECT|"Server"|pseudo|cle_publique
+// DISCONNECT
+public class Serveur {
+	
+	private ArrayList<ClientRegistration> clients_enregistres = new ArrayList<ClientRegistration>();
+	private ServerSocket serveurSocket;
+	private Socket clientSocket;
+
+	private ArrayList<Group> groupes_enregistres = new ArrayList<Group>();
+	Group groupe_general;
+	
+	public Serveur() throws IOException {
+		ServerSocket serveur_socket = new ServerSocket(PARAMETRE.port);
+		Socket client_socket = new Socket();
+	}
+	
+	// La fonction qui sert a écouter les demandes de connexion et qui créer un Thread avec la demande 
+	public static void main(String[] args) throws IOException {
+		
+		Serveur serveur = new Serveur();
+		Group groupe_general = new Group("Général");
+		serveur.groupes_enregistres.add(groupe_general);
+		serveur.groupe_general = groupe_general;
+		serveur.serveurSocket = new ServerSocket(PARAMETRE.port);
+
+		while (true) {
+		    serveur.clientSocket = serveur.serveurSocket.accept(); 
+		    System.out.println("Nouveau client connecté !");
+		    
+		    // on lance un thread pour ce client
+		    
+		    // Mais ca je propose de le gérer dans la fonction run() de la classe ClientRegistration
+		    ClientRegistration client = new ClientRegistration("","",serveur.clientSocket, serveur);
+		    serveur.clients_enregistres.add(client);
+		    Thread client_thread = new Thread(client);
+		    
+		    client_thread.start();
+		    
+		}
+	
+	// A coder : une fonction qui est appelé par ClientRegistration et qui demande d'envoyer un message via un pseudo par exemple
+		
+		
+		
+		
+		/**int port = PARAMETRE.port + 1;
+		System.out.println("Serveur en attente sur le port " + port + "...");
+		SecretKey AES_key;
+		Cipher cipher = null;
+		try {
+			AES_key = echanger_AES();
+			cipher = Cipher.getInstance("AES");
+			cipher.init(Cipher.DECRYPT_MODE, AES_key);
+		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException
+				| BadPaddingException | ClassNotFoundException | IOException e) {
+			e.printStackTrace();
+		}
+
+		try (ServerSocket serveur = new ServerSocket(port)) {
+			Socket clientSocket = serveur.accept();
+			System.out.println("Client connecté !");
+			DataInputStream in = new DataInputStream(clientSocket.getInputStream());
+
+			int messageSize;
+			String message = null;
+			while ((messageSize = in.readInt()) != 0) {
+				byte[] encrypte = new byte[messageSize];
+				in.readFully(encrypte);
+				try {
+					message = new String(cipher.doFinal(encrypte));
+				} catch (IllegalBlockSizeException | BadPaddingException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				if (message.equalsIgnoreCase("bye")) {
+					System.out.println("Fermeture demandée par le client...");
+					break;
+				}
+				System.out.println("Message reçu : " + message);
+			}
+			System.out.println("Client déconnecté.");
+		} catch (IOException e) {
+			e.printStackTrace();
+		}**/
+	}
+
+	public static SecretKey echanger_AES() throws IOException, NoSuchAlgorithmException, ClassNotFoundException,
+			NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+		int port = PARAMETRE.port;
+		ServerSocket serveur = new ServerSocket(port);
+		Socket clientSocket = serveur.accept();
+		ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
+		ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
+
+		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+		keyGen.initialize(2048);
+		KeyPair keyPair = keyGen.generateKeyPair();
+
+		out.writeObject(keyPair.getPublic());
+		out.flush();
+		byte[] aesChiffree = (byte[]) in.readObject();
+		Cipher cipherRSA = Cipher.getInstance("RSA");
+		cipherRSA.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
+		byte[] aesBytes = cipherRSA.doFinal(aesChiffree);
+
+		SecretKey aesKey = new SecretKeySpec(aesBytes, "AES");
+		System.out.println("Clé AES reçue et déchiffrée !");
+
+		
+		return aesKey;
+	}
+
+
+
+	
+	// BASIQUEMENT CETTE FONCTION POUR L'INSTANT SE FAIT AUTOMATIQUEMENT DANS LE MAIN
+	/**
+	 *  Demande aux clients ses informations tout en conservant la connexion
+	 *  Recupère pseudo et IP
+	 * @param serveur
+	 * @return
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 * @throws NoSuchAlgorithmException
+	 * @throws NoSuchPaddingException
+	 * @throws InvalidKeyException
+	 * @throws IllegalBlockSizeException
+	 * @throws BadPaddingException
+	 */
+
+
+	public ClientRegistration registerClient(Socket clientSocket)
+	        throws IOException, ClassNotFoundException, NoSuchAlgorithmException,
+	        NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+
+
+	    ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
+	    ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
+
+	    out.writeObject("register_request_pseudo");
+	    out.flush();
+
+	    String pseudo = (String) in.readObject();
+	    
+	    out.writeObject("register_request_IP");
+	    out.flush();
+	    
+	    String IP = (String) in.readObject();
+	    
+	    ClientRegistration newClient = new ClientRegistration(pseudo, IP, clientSocket, this);
+	    this.clients_enregistres.add(newClient);
+	    return newClient;
+	}
+	
+	
+	public boolean pseudo_is_unique(String pseudo) {
+		for (ClientRegistration fiche_client : this.clients_enregistres) {
+			if (fiche_client.pseudo.equals(pseudo)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public String rendre_unique(String pseudo_initial) {
+		String pseudo_test = pseudo_initial;
+		int compteur = 1;
+		while (!this.pseudo_is_unique(pseudo_test)) {
+			pseudo_test = pseudo_initial + "_" + compteur;
+			compteur += 1;
+		}
+		return pseudo_test;
+	}
+
+	public Group find_group_by_name(String nom_groupe) {
+		for (Group group : this.groupes_enregistres) {
+			if (group.nom_groupe.equals(nom_groupe)) {
+				return group;
+			}
+		}
+		return null;
+	}
+	
+	public ClientRegistration find_by_pseudo(String pseudo) {
+		for (ClientRegistration fiche_client : this.clients_enregistres) {
+			if (fiche_client.pseudo.equals(pseudo)) {
+				return fiche_client;
+			}
+		}
+		return null;
+	}
+	
+	public ClientRegistration find_by_IP(String IP) {
+		for (ClientRegistration fiche_client : this.clients_enregistres) {
+			if (fiche_client.IP.equals(IP)) {
+				return fiche_client;
+			}
+		}
+		return null;
+	}
+
+	
+	/**
+	 * Permet de créer une connexion client/serveur entre deux clients, et par la même occasion d'échanger leurs clés
+	 * @throws InvalidKeyException
+	 * @throws ClassNotFoundException
+	 * @throws NoSuchAlgorithmException
+	 * @throws NoSuchPaddingException
+	 * @throws IllegalBlockSizeException
+	 * @throws BadPaddingException
+	 * @throws IOException
+	 */
+
+
+}
+	
