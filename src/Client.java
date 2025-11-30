@@ -1,4 +1,5 @@
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -8,6 +9,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.net.ConnectException;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
@@ -48,10 +50,14 @@ public class Client {
 	static final String SEP = PARAMETRE.SEP;
 
 	// COMPOSANTS GRAPHIQUES
+	
+	
+	
 	// Fenetre Principale
 	private JFrame main_frame;
 	private GridBagLayout main_grid;
 	private GridBagConstraints c = new GridBagConstraints();
+	public static final String BASE_TITLE = "Chaffeur, le super chat sécurisé ! (ne dite jamais quoi)";
 
 	// Menu de gauche : liste des groupes
 	private JPanel groupe_list;
@@ -108,11 +114,7 @@ public class Client {
 
 		chatInput = new JTextField();
 		chatInput.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-		send_message = new JButton();
-		chatInput.setMinimumSize(new Dimension(10, 30));
-		chatInput.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-		send_message.setMinimumSize(new Dimension(80, 30));
-		send_message.setMaximumSize(new Dimension(80, 30));
+		send_message = new JButton("Envoyer");
 
 		chat_panel = new JPanel();
 		chat_panel.setLayout(new BoxLayout(chat_panel, BoxLayout.Y_AXIS));
@@ -122,12 +124,12 @@ public class Client {
 		entry_panel = new JPanel(new BorderLayout());
 		entry_panel.add(chatInput, BorderLayout.CENTER);
 		entry_panel.add(send_message, BorderLayout.EAST);
-		entry_panel.setSize(10, 30);
+		entry_panel.setSize(10, 80);
 
-		chatInput.setMinimumSize(new Dimension(10, 30));
-		chatInput.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-		send_message.setMinimumSize(new Dimension(80, 30));
-		send_message.setMaximumSize(new Dimension(80, 30));
+		chatInput.setMinimumSize(new Dimension(10, 50));
+		chatInput.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+		send_message.setMinimumSize(new Dimension(10, 50));
+		send_message.setMaximumSize(new Dimension(10, 50));
 
 		all_for_chat_panel = new JPanel(new BorderLayout());
 
@@ -218,16 +220,24 @@ public class Client {
 		for (Contact groupe_contact : contacts) {
 			JButton ngroupe = new JButton(groupe_contact.pseudo);
 			groupe_button_list.add(ngroupe);
+			ngroupe.addActionListener(e -> {
+				actual_chat = ngroupe.getText();
+				update_actual_chat();
+				update_Group_Scroll_Bar();
+			});
+			
+			
+			if (ngroupe.getText().equals(actual_chat)) {
+				ngroupe.setBackground(Color.BLUE);
+				ngroupe.setForeground(Color.white);
+			}
+
 		}
 
 		// Ajout dans la liste verticale
 		for (JButton btn : groupe_button_list) {
 			groupe_list.add(btn);
-			btn.addActionListener(e -> {
-				System.out.println("Je tente de rejoindre " + btn.getText());
-				actual_chat = btn.getText();
-				update_actual_chat();
-			});
+
 		}
 
 		groupe_list.revalidate();
@@ -241,8 +251,9 @@ public class Client {
 	 **/
 	public void make_unique_pseudo(int nb) {
 		this.pseudo = this.pseudo + String.valueOf(nb);
-		System.out.println("Votre pseudo a dû être modifié en " + this.pseudo);
+		updateTitle();
 	}
+	
 
 	public static void main(String[] args) throws Exception {
 
@@ -250,6 +261,7 @@ public class Client {
 		int port = PARAMETRE.port;
 		Client moi = new Client("Gabriel");
 		moi.main_frame.setVisible(true);
+		try {
 		Socket socket = new Socket(host, port);
 		BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
 		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -311,10 +323,10 @@ public class Client {
 				while ((message = console.readLine()) != null) {
 					if (message.equalsIgnoreCase("bye")) {
 						socket.close();
-						System.out.println("Au revoir et à bientôt :DD");
+						JOptionPane.showMessageDialog(moi.main_frame, "Au revoir et à bientôt :DD");
 					} else if (message.toLowerCase().equals("quoi") || message.toLowerCase().equals("quoi?")
 							|| message.toLowerCase().equals("quoi ?")) {
-						System.out.println("Feur !");
+						JOptionPane.showMessageDialog(moi.main_frame, "Feur !");
 						moi.envoie_message("MESSAGE_TO", "global",
 								"Je suis un gros nullos qui a dit quoi dites moi tous feur !", out);
 					} else if (message.contains("creerGroupe")) {
@@ -337,7 +349,11 @@ public class Client {
 				e.printStackTrace();
 			}
 
-		});
+		});}
+		catch (ConnectException h) {
+			JOptionPane.showMessageDialog(moi.main_frame, "Nous sommes navré mais la connexion n'a pas pu être établie. Vérifiez votre IP ainsi que l'état du Réseau");
+			moi.main_frame.dispose();
+		};
 		// clavier.start();
 
 	}
@@ -370,6 +386,19 @@ public class Client {
 	 **/
 
 	// Se connecte au serveur avec le port en paramètre
+	
+	
+
+	
+	public void updateTitle() {
+		String title = Client.BASE_TITLE;
+		if (pseudo != "" && pseudo != null) {
+			title = title + " | VOTRE PSEUDO : " + (pseudo);
+		}
+		main_frame.setTitle(title);
+	}
+	
+	
 	public void register(PrintWriter out, BufferedReader clavier_console, BufferedReader in) throws Exception {
 		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
 		keyGen.initialize(2048);
@@ -378,14 +407,13 @@ public class Client {
 		this.cle_prive = keyPair.getPrivate();
 		String pseudo = JOptionPane.showInputDialog(main_frame, "Choisissez votre pseudo !");
 		if (pseudo.equals("")) {
-			System.out.println("Tu t'appeleras Gabriel alors ahah");
+			JOptionPane.showMessageDialog(main_frame, "Tu t'appeleras Gabriel alors ahah");
 			pseudo = "Gabriel";
 		}
 		this.envoie_message("CONNECT", "server",
 				pseudo + SEP + Base64.getEncoder().encodeToString(this.cle_public.getEncoded()), out);
 
 		recevoir_message(in.readLine(), out);
-		System.out.println("Bienvenu dans le chafeur:");
 
 	}
 
@@ -442,8 +470,9 @@ public class Client {
 				String[] pseudo_et_cle = decoupe[3].split(SEP);
 				this.pseudo = pseudo_et_cle[0];
 				this.contacts.add(new Contact("global", funcs.RSA_DECRYPT(pseudo_et_cle[1], this.cle_prive)));
-				System.out.println("Votre pseudo a été définit comme étant : " + this.pseudo);
+				JOptionPane.showMessageDialog(main_frame, "Votre pseudo a été définit comme étant : " + this.pseudo);
 				update_Group_Scroll_Bar();
+				updateTitle();
 				break;
 			case "MESSAGE_FROM":
 
@@ -474,7 +503,7 @@ public class Client {
 				break;
 			case "GROUP2":
 				String[] nom_et_membre_ban = decoupe[3].split(SEP, 2);
-				System.out.println("Votre nom de groupe est :" + nom_et_membre_ban[0]);
+				JOptionPane.showMessageDialog(main_frame, "Votre nom de groupe est :" + nom_et_membre_ban[0]);
 				if (nom_et_membre_ban[1] != null) {
 					System.out.println("Les membres suivant n'existe pas : " + nom_et_membre_ban[1].replace(SEP, " "));
 				}
