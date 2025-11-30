@@ -1,4 +1,5 @@
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -24,10 +25,10 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-<<<<<<< Updated upstream
-=======
+
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -36,7 +37,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
->>>>>>> Stashed changes
 
 public class Client {
 	private int ID;
@@ -74,11 +74,14 @@ public class Client {
 	private JPanel chat_panel;
 	JLabel historychat;
 	JButton send_message;
+	JPanel entry_panel;
+	JPanel all_for_chat_panel;
 	
 	
 	// Historique des messages
 	private HashMap<String, ArrayList<JLabel>> historique = new HashMap<String, ArrayList<JLabel>>();
 	String actual_chat = "global";
+	private JScrollPane scroll_chat;
 	
 	
 	
@@ -114,12 +117,36 @@ public class Client {
 	    historique.put("global", new ArrayList<JLabel>());
 	    act_msg_list().add(new JLabel("Voici le salon global ! Ici vous pouvez discuttez avec tous les nouveaux membres de Chafeur !"));
 	    
+	    
 	   
+	    chatInput = new JTextField();
+	    chatInput.setBorder(BorderFactory.createEmptyBorder(5,10,5,10));
+	    send_message = new JButton();
+	    chatInput.setMinimumSize(new Dimension(10, 30));
+	    chatInput.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+	    send_message.setMinimumSize(new Dimension(80, 30));
+	    send_message.setMaximumSize(new Dimension(80, 30));
 	    
 	    
 	    chat_panel = new JPanel();
-	    chat_panel.setLayout(new BorderLayout());
+	    chat_panel.setLayout(new BoxLayout(chat_panel, BoxLayout.Y_AXIS));
 	    // ajoute ici ton historychat, chatInput, send_message, etc.
+	    scroll_chat = new JScrollPane(chat_panel);
+	    
+	    entry_panel = new JPanel(new BorderLayout());
+	    entry_panel.add(chatInput, BorderLayout.CENTER);
+	    entry_panel.add(send_message, BorderLayout.EAST);
+	    entry_panel.setSize(10,30);
+	    
+	    chatInput.setMinimumSize(new Dimension(10, 30));
+	    chatInput.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+	    send_message.setMinimumSize(new Dimension(80, 30));
+	    send_message.setMaximumSize(new Dimension(80, 30));
+	    
+	    all_for_chat_panel = new JPanel(new BorderLayout());
+	    
+	    all_for_chat_panel.add(entry_panel, BorderLayout.SOUTH);
+	    all_for_chat_panel.add(scroll_chat, BorderLayout.NORTH);
 
 	    
 	    // CONSTRAINTS
@@ -139,15 +166,17 @@ public class Client {
 	    c.fill = GridBagConstraints.BOTH;
 	    c.weightx = 10;
 	    c.weighty = 1.0;
-	    main_frame.add(chat_panel, c);
+	    main_frame.add(all_for_chat_panel, c);
 
 	    // BOUTON
 	    add_group_btn = new JButton("Nouveau groupe");
-	    add_group_btn.addActionListener(e -> {contacts.add(new Contact("Feur"+contacts.size(), null)); update_Group_Scroll_Bar();});
+	    
 	   
 
 	    // UPDATE
 	    update_Group_Scroll_Bar();
+	    
+	    update_actual_chat();
 
 	    // AFFICHAGE
 	    main_frame.setVisible(true);
@@ -155,11 +184,48 @@ public class Client {
 
 	}
 	
+	private void lancerCreationGroupe(PrintWriter out) {
+		String nom_groupe = JOptionPane.showInputDialog(main_frame, "Comment voulez appellez le nouveau groupe ?");
+		while (nom_groupe.strip().equals("")) {
+			nom_groupe = JOptionPane.showInputDialog(main_frame, "Veuillez écrire quelque chose quand même...");
+		}
+		
+		// Ouverture de la liste des pseudo avec un truc pour cocher (plus tard)
+		String nom_poto= JOptionPane.showInputDialog(main_frame, "Qui ajouter ?");
+		
+		ArrayList<String> a = new ArrayList<String>();
+		a.add(nom_poto);
+		
+		creer_groupe(nom_groupe,a , out);
+		
+		update_actual_chat();
+		
+		update_Group_Scroll_Bar();
+		
+	}
+
 	ArrayList<JLabel> act_msg_list() {
 		return historique.get(actual_chat);
 	}
 	void update_actual_chat() {
-		chat_panel.removeAll();
+		all_for_chat_panel.removeAll();
+	    chat_panel.removeAll();
+
+	    
+	    // Ajout dans la liste verticale
+	    for (JLabel msg : act_msg_list()) {
+	    	chat_panel.add(msg);
+	    }
+	    
+	    all_for_chat_panel.add(entry_panel, BorderLayout.SOUTH);
+	    all_for_chat_panel.add(scroll_chat, BorderLayout.NORTH);
+	    
+	    all_for_chat_panel.revalidate();
+	    all_for_chat_panel.repaint();
+	    
+	    
+	    
+		
 		
 	}
 	
@@ -180,11 +246,17 @@ public class Client {
 	    // Ajout dans la liste verticale
 	    for (JButton btn : groupe_button_list) {
 	        groupe_list.add(btn);
+	        btn.addActionListener(e -> {
+	        	System.out.println("Je tente de rejoindre "+btn.getText());
+				actual_chat = btn.getText();
+				update_actual_chat();
+			});
 	    }
 
 	    groupe_list.revalidate();
 	    groupe_list.repaint();
 	}
+	
 
 	/**
 	 * Ajoute au pseudonyme le nombre en entrée. Permez d'éviter les collisions de
@@ -207,7 +279,17 @@ public class Client {
 		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 		PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 		
+		moi.send_message.addActionListener(e -> {try {
+			moi.envoie_message("MESSAGE_TO", moi.actual_chat, moi.chatInput.getText(), out);
+		} catch (Exception e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		moi.update_actual_chat(); moi.update_Group_Scroll_Bar(); moi.chatInput.setText("");});
+		
 		moi.register(out, console, in);
+		
+		moi.add_group_btn.addActionListener(e -> {moi.lancerCreationGroupe(out);});
 		
 
 		// out =
@@ -327,6 +409,7 @@ public class Client {
 
 	public void envoie_message(String intitule, String destinataire, String message, PrintWriter out)
 			throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
+		System.out.println(intitule+destinataire+message);
 		if (destinataire.equals("server")) {
 			out.println(intitule + SEP + this.pseudo + SEP + "server" + SEP + message);
 		} else {
@@ -341,6 +424,7 @@ public class Client {
 						}
 						out.println(intitule + SEP + this.pseudo + SEP + destinataire + SEP
 								+ Base64.getEncoder().encodeToString(encrypte));
+						act_msg_list().add(new JLabel("Vous : "+message));
 					} catch (IllegalBlockSizeException | BadPaddingException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -363,6 +447,7 @@ public class Client {
 				this.pseudo = pseudo_et_cle[0];
 				this.contacts.add(new Contact("global", funcs.RSA_DECRYPT(pseudo_et_cle[1], this.cle_prive)));
 				System.out.println("Votre pseudo a été définit comme étant : " + this.pseudo);
+				update_Group_Scroll_Bar();
 				break;
 			case "MESSAGE_FROM":
 
@@ -372,8 +457,16 @@ public class Client {
 						Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 						cipher.init(Cipher.DECRYPT_MODE, mon_ami.la_clef);
 						byte[] valeur = Base64.getDecoder().decode(decoupe[3]);
-						System.out.println(mon_ami.pseudo + " " + decoupe[1] + ": "
+						String msg_final = ("> " + decoupe[1] + ": "
 								+ new String(cipher.doFinal(valeur), StandardCharsets.UTF_8));
+						
+						historique.get(decoupe[2]).add(new JLabel(msg_final));
+						
+						
+						if (decoupe[2].equals(actual_chat)) {
+							update_actual_chat();
+						}
+						
 						cond = false;
 						break;
 
@@ -393,10 +486,16 @@ public class Client {
 				break;
 
 			case "GROUP3":
+				
 				// création du groupe
 				String[] nom_et_cle = decoupe[3].split(SEP);
+				// System.out.println("new serv"+ nom_et_cle[0]);
 				this.contacts.add(new Contact(nom_et_cle[0], funcs.RSA_DECRYPT(nom_et_cle[1], this.cle_prive)));
-				System.out.println("Vous etes dans le groupe : " + nom_et_cle[0]);
+				this.historique.put(nom_et_cle[0], new ArrayList<JLabel>());
+				
+				// System.out.println("Vous etes dans le groupe : " + nom_et_cle[0]);
+				update_Group_Scroll_Bar();
+				
 				break;
 			default:
 				System.out.println(message);
