@@ -1,3 +1,7 @@
+import java.awt.BorderLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -14,11 +18,25 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.HashMap;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+<<<<<<< Updated upstream
+=======
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+>>>>>>> Stashed changes
 
 public class Client {
 	private int ID;
@@ -29,12 +47,143 @@ public class Client {
 	private PublicKey cle_public;
 	private ArrayList<Contact> contacts = new ArrayList<Contact>();
 	static final String SEP = PARAMETRE.SEP;
+	
+
+	
+	
+	
+	// COMPOSANTS GRAPHIQUES
+	// Fenetre Principale
+	private JFrame main_frame;
+	private GridBagLayout main_grid;
+	private GridBagConstraints c = new GridBagConstraints();
+	
+	// Menu de gauche : liste des groupes
+	private JPanel groupe_list;
+	JScrollPane scroll_groupe;
+	private ArrayList<JButton> groupe_button_list;
+	private JButton add_group_btn;
+	
+	
+	// Demandes
+	private JButton demandeAlerteButton;
+	
+	
+	// Chat actuel
+	JTextField chatInput;
+	private JPanel chat_panel;
+	JLabel historychat;
+	JButton send_message;
+	
+	
+	// Historique des messages
+	private HashMap<String, ArrayList<JLabel>> historique = new HashMap<String, ArrayList<JLabel>>();
+	String actual_chat = "global";
+	
+	
+	
 
 	public Client(String pseudo)
 			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
 			IllegalBlockSizeException, BadPaddingException, ClassNotFoundException, IOException {
 		this.pseudo = pseudo;
+		
+		
 
+	    groupe_button_list = new ArrayList<>();
+
+	    // FRAME
+	    main_frame = new JFrame();
+	    main_frame.setTitle("Chaffeur, le super chat sécurisé ! (ne dite jamais quoi)");
+	    main_frame.setSize(800,600);
+	    main_frame.setResizable(true);
+
+	    main_grid = new GridBagLayout();
+	    main_frame.setLayout(main_grid);
+
+	    // PANEL DE LISTE
+	    groupe_list = new JPanel();
+	    groupe_list.setLayout(new BoxLayout(groupe_list, BoxLayout.Y_AXIS));
+
+	    // SCROLL
+	    scroll_groupe = new JScrollPane(groupe_list);
+
+	    
+	    
+	    // Chat panel
+	    historique.put("global", new ArrayList<JLabel>());
+	    act_msg_list().add(new JLabel("Voici le salon global ! Ici vous pouvez discuttez avec tous les nouveaux membres de Chafeur !"));
+	    
+	   
+	    
+	    
+	    chat_panel = new JPanel();
+	    chat_panel.setLayout(new BorderLayout());
+	    // ajoute ici ton historychat, chatInput, send_message, etc.
+
+	    
+	    // CONSTRAINTS
+	    c.gridy = 0;
+	    c.gridwidth = 1;
+	    c.gridheight = 1;
+	    c.fill = GridBagConstraints.BOTH;
+	    c.weightx = 1;
+	    c.weighty = 1.0;  // prend toute la hauteur
+	    main_frame.add(scroll_groupe, c);
+
+	    // Colonne droite = 2/3
+	    c.gridx = 1;
+	    c.gridy = 0;
+	    c.gridwidth = 1;
+	    c.gridheight = 1;
+	    c.fill = GridBagConstraints.BOTH;
+	    c.weightx = 10;
+	    c.weighty = 1.0;
+	    main_frame.add(chat_panel, c);
+
+	    // BOUTON
+	    add_group_btn = new JButton("Nouveau groupe");
+	    add_group_btn.addActionListener(e -> {contacts.add(new Contact("Feur"+contacts.size(), null)); update_Group_Scroll_Bar();});
+	   
+
+	    // UPDATE
+	    update_Group_Scroll_Bar();
+
+	    // AFFICHAGE
+	    main_frame.setVisible(true);
+
+
+	}
+	
+	ArrayList<JLabel> act_msg_list() {
+		return historique.get(actual_chat);
+	}
+	void update_actual_chat() {
+		chat_panel.removeAll();
+		
+	}
+	
+	void update_Group_Scroll_Bar() {
+	    groupe_list.removeAll();
+	    groupe_button_list.clear();
+
+	 // On ajoute le bouton "nouveau groupe"
+	    groupe_button_list.add(add_group_btn);
+	    
+	    for (Contact groupe_contact : contacts) {
+	        JButton ngroupe = new JButton(groupe_contact.pseudo);
+	        groupe_button_list.add(ngroupe);
+	    }
+
+	    
+
+	    // Ajout dans la liste verticale
+	    for (JButton btn : groupe_button_list) {
+	        groupe_list.add(btn);
+	    }
+
+	    groupe_list.revalidate();
+	    groupe_list.repaint();
 	}
 
 	/**
@@ -48,14 +197,18 @@ public class Client {
 	}
 
 	public static void main(String[] args) throws Exception {
+		
 		String host = PARAMETRE.host;
 		int port = PARAMETRE.port;
 		Client moi = new Client("Gabriel");
+		moi.main_frame.setVisible(true);
 		Socket socket = new Socket(host, port);
 		BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
 		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 		PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+		
 		moi.register(out, console, in);
+		
 
 		// out =
 		// BufferedReader in =
@@ -145,8 +298,7 @@ public class Client {
 		KeyPair keyPair = keyGen.generateKeyPair();
 		this.cle_public = keyPair.getPublic();
 		this.cle_prive = keyPair.getPrivate();
-		System.out.println("Choisissez votre peusdo : ");
-		String pseudo = clavier_console.readLine();
+		String pseudo = JOptionPane.showInputDialog(main_frame, "Choisissez votre pseudo !");
 		if (pseudo.equals("")) {
 			System.out.println("Tu t'appeleras Gabriel alors ahah");
 			pseudo = "Gabriel";
