@@ -4,17 +4,12 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.InvalidKeyException;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 
 import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 // TOUTES LES COMMANDES DIFFERENTES :
 // MESSAGE_TO | destinataire (peut etre un groupe et si null alors chat global) | contenu_message
@@ -88,30 +83,28 @@ public class Serveur {
 		 **/
 	}
 
-	public static SecretKey echanger_AES() throws IOException, NoSuchAlgorithmException, ClassNotFoundException,
-			NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-		int port = PARAMETRE.port;
-		ServerSocket serveur = new ServerSocket(port);
-		Socket clientSocket = serveur.accept();
-		ObjectOutputStream out = new ObjectOutputStream(clientSocket.getOutputStream());
-		ObjectInputStream in = new ObjectInputStream(clientSocket.getInputStream());
-
-		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-		keyGen.initialize(2048);
-		KeyPair keyPair = keyGen.generateKeyPair();
-
-		out.writeObject(keyPair.getPublic());
-		out.flush();
-		byte[] aesChiffree = (byte[]) in.readObject();
-		Cipher cipherRSA = Cipher.getInstance("RSA");
-		cipherRSA.init(Cipher.DECRYPT_MODE, keyPair.getPrivate());
-		byte[] aesBytes = cipherRSA.doFinal(aesChiffree);
-
-		SecretKey aesKey = new SecretKeySpec(aesBytes, "AES");
-		System.out.println("Clé AES reçue et déchiffrée !");
-
-		return aesKey;
-	}
+	/**
+	 * public static SecretKey echanger_AES() throws IOException,
+	 * NoSuchAlgorithmException, ClassNotFoundException, NoSuchPaddingException,
+	 * InvalidKeyException, IllegalBlockSizeException, BadPaddingException { int
+	 * port = PARAMETRE.port; ServerSocket serveur = new ServerSocket(port); Socket
+	 * clientSocket = serveur.accept(); ObjectOutputStream out = new
+	 * ObjectOutputStream(clientSocket.getOutputStream()); ObjectInputStream in =
+	 * new ObjectInputStream(clientSocket.getInputStream());
+	 * 
+	 * KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+	 * keyGen.initialize(2048); KeyPair keyPair = keyGen.generateKeyPair();
+	 * 
+	 * out.writeObject(keyPair.getPublic()); out.flush(); byte[] aesChiffree =
+	 * (byte[]) in.readObject(); Cipher cipherRSA = Cipher.getInstance("RSA");
+	 * cipherRSA.init(Cipher.DECRYPT_MODE, keyPair.getPrivate()); byte[] aesBytes =
+	 * cipherRSA.doFinal(aesChiffree);
+	 * 
+	 * SecretKey aesKey = new SecretKeySpec(aesBytes, "AES");
+	 * System.out.println("Clé AES reçue et déchiffrée !");
+	 * 
+	 * return aesKey; }
+	 **/
 
 	// BASIQUEMENT CETTE FONCTION POUR L'INSTANT SE FAIT AUTOMATIQUEMENT DANS LE
 	// MAIN
@@ -198,6 +191,34 @@ public class Serveur {
 		return null;
 	}
 
+	public boolean groupe_is_unique(String nom) {
+		for (Group groupes : this.groupes_enregistres) {
+			if (groupes.nom_groupe.equals(nom)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	public String rendre_unique_groupe(String nom_initial) {
+		String nom_test = nom_initial;
+		int compteur = 1;
+		while (!this.groupe_is_unique(nom_test)) {
+			nom_test = nom_initial + "_" + compteur;
+			compteur += 1;
+		}
+		return nom_test;
+	}
+
+	public Group creer_groupe(String nom, ArrayList<ClientRegistration> membres) throws NoSuchAlgorithmException {
+		nom = rendre_unique_groupe(nom);
+		Group nouveau = new Group(nom);
+		for (ClientRegistration clients : membres) {
+			nouveau.ajouter_membre(clients);
+		}
+		this.groupes_enregistres.add(nouveau);
+		return nouveau;
+	}
 	/**
 	 * Permet de créer une connexion client/serveur entre deux clients, et par la
 	 * même occasion d'échanger leurs clés

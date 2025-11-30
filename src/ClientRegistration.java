@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 import javax.crypto.SecretKey;
@@ -58,7 +59,8 @@ public class ClientRegistration implements Runnable {
 				String type_message = message_slitted[0];
 				System.out.println(type_message);
 				System.out.println(Arrays.toString(message_slitted));
-				if (type_message.equals("CONNECT")) { // CONNEXT|Gabriel|Server|((pseudo|cle_publique)) -> Contenu
+				switch (type_message) {
+				case "CONNECT": // CONNEXT|Gabriel|Server|((pseudo|cle_publique)) -> Contenu
 					System.out.println("Tentative de connexion");
 					String[] new_split = message_slitted[3].split(SEP);
 					String clientPseudo = new_split[0];
@@ -70,7 +72,8 @@ public class ClientRegistration implements Runnable {
 							+ funcs.RSA_ENCRYPT(host.groupe_general.cle_secrete, clientClePublique));
 
 					host.groupe_general.ajouter_membre(this);
-				} else if (type_message.equals("MESSAGE_TO")) { // MESSAGE|de_qui|destinataire|contenu_message
+					break;
+				case "MESSAGE_TO": // MESSAGE|de_qui|destinataire|contenu_message
 					// Gérer l'envoie de message
 					String destinataire = message_slitted[2];
 					String contenu_message = message_slitted[3];
@@ -84,6 +87,7 @@ public class ClientRegistration implements Runnable {
 						// On cherche si c'est un groupe
 						Group group_destinataire = host.find_group_by_name(destinataire);
 						if (group_destinataire != null) {
+							System.out.println(destinataire);
 							// Envoyer le message à tous les membres du groupe
 							for (ClientRegistration membre : group_destinataire.get_membres()) {
 								if (!membre.pseudo.equals(this.pseudo)) { // Ne pas renvoyer au sender
@@ -96,17 +100,39 @@ public class ClientRegistration implements Runnable {
 							out.println("Erreur : destinataire '" + destinataire + "' non trouvé.");
 						}
 					}
+					break;
+				case "GROUP1":
+					String[] nom_et_membres = message_slitted[3].split(SEP);
+					ArrayList<ClientRegistration> membres = new ArrayList<ClientRegistration>();
+					membres.add(this);
+					String non_existant = "";
+					ClientRegistration membre;
+					for (int i = 1; i < nom_et_membres.length; i++) {
+						if ((membre = host.find_by_pseudo(nom_et_membres[i])) != null) {
+							membres.add(membre);
+						} else {
+							non_existant += SEP + membre;
+						}
+
+					}
+					Group nouveau = this.host.creer_groupe(nom_et_membres[0], membres);
+					out.println(
+							"GROUP2" + SEP + "server" + SEP + pseudo + SEP + nouveau.nom_groupe + SEP + non_existant);
+					for (ClientRegistration clients : membres) {
+						PrintWriter out_clients = new PrintWriter(clients.socket.getOutputStream(), true);
+						out_clients.println("GROUP3" + SEP + "server" + SEP + SEP + nom_et_membres[0] + SEP
+								+ funcs.RSA_ENCRYPT(nouveau.cle_secrete, clients.cle_public));
+
+					}
 				}
 
-				else if (type_message == "DISCONNECT") { // DISCONNECT
-					break;
-					// Gérer la déconnexion
-				}
 			}
 
 			// Maintenant on récupère sa clé publique sans demandé à l'utilisateur
 
-		} catch (Exception e) {
+		} catch (
+
+		Exception e) {
 			e.printStackTrace();
 		} finally {
 			try {

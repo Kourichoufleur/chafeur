@@ -12,15 +12,13 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
 public class Client {
 	private int ID;
@@ -88,6 +86,13 @@ public class Client {
 						System.out.println("Feur !");
 						moi.envoie_message("MESSAGE_TO", "global",
 								"Je suis un gros nullos qui a dit quoi dites moi tous feur !", out);
+					} else if (message.contains("creerGroupe")) {
+						String[] tab = message.split("\\|", 3);
+						moi.creer_groupe(tab[1], new ArrayList<String>(Arrays.asList(tab[2].split("\\|"))), out);
+					} else if (message.contains("MP")) {
+						String[] tab = message.split("\\|");
+						moi.envoie_message("MESSAGE_TO", tab[1], tab[2], out);
+
 					} else {
 						System.out.print(moi.pseudo + " : "); // au
 						moi.envoie_message("MESSAGE_TO", "global", message, out); // on met "" car pour l'instant on
@@ -156,11 +161,11 @@ public class Client {
 
 	public void creer_groupe(String nom, ArrayList<String> liste_ami, PrintWriter out) {
 		try {
-			String mes_amis = "";
+			String mes_amis = nom;
 			for (String ami : liste_ami) {
-				mes_amis += ami + SEP;
+				mes_amis += SEP + ami;
 			}
-			this.envoie_message("groupe_etape_1", nom, mes_amis, out);
+			this.envoie_message("GROUP1", "server", mes_amis, out);
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -227,30 +232,22 @@ public class Client {
 					System.out.println("ne doit jamais arriver");
 				}
 				break;
-			case "groupe_etape_2":
-				// genere la clef aes l'encrypte avec chaque clef publique et envoie un message
-				// avec groupe_etape_3 le nom du groupe et les clefs aes séparé par des pipes
-				KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-				keyGen.init(128);
-				SecretKey aesKey = keyGen.generateKey();
-				contacts.add(new Contact(decoupe[1], aesKey));
-				String liste_clefs = "";
-				Cipher cipher = Cipher.getInstance("RSA");
-				for (String clef_public : decoupe[2].split(SEP)) {
-					cipher.init(Cipher.ENCRYPT_MODE,
-							new SecretKeySpec(clef_public.getBytes(StandardCharsets.UTF_8), "RSA"));
-					liste_clefs += cipher.doFinal(aesKey.getEncoded()) + SEP;
-
+			case "GROUP2":
+				String[] nom_et_membre_ban = decoupe[3].split(SEP, 2);
+				System.out.println("Votre nom de groupe est :" + nom_et_membre_ban[0]);
+				if (nom_et_membre_ban[1] != null) {
+					System.out.println("Les membres suivant n'existe pas : " + nom_et_membre_ban[1].replace(SEP, " "));
 				}
-				this.envoie_message("groupe_etape_3", decoupe[1], liste_clefs, out);
+				break;
 
-			case "groupe_etape_final":
+			case "GROUP3":
 				// création du groupe
-				byte[] valeur = decoupe[2].getBytes(StandardCharsets.UTF_8);
-				Cipher cipher1 = Cipher.getInstance("RSA");
-				cipher1.init(Cipher.DECRYPT_MODE, this.cle_prive);
-				Contact nouvel_ami = new Contact(decoupe[1], new SecretKeySpec(cipher1.doFinal(valeur), "AES"));
-				contacts.add(nouvel_ami);
+				String[] nom_et_cle = decoupe[3].split(SEP);
+				this.contacts.add(new Contact(nom_et_cle[0], funcs.RSA_DECRYPT(nom_et_cle[1], this.cle_prive)));
+				System.out.println("Vous etes dans le groupe : " + nom_et_cle[0]);
+				break;
+			default:
+				System.out.println(message);
 				break;
 
 			}
