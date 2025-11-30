@@ -127,7 +127,8 @@ public class ClientRegistration implements Runnable {
 				}
 
 			}
-
+			this.host.deconecter(this);
+			System.out.println(this.pseudo + " n'est plus la");
 			// Maintenant on récupère sa clé publique sans demandé à l'utilisateur
 
 		} catch (

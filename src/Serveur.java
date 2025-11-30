@@ -219,6 +219,11 @@ public class Serveur {
 		this.groupes_enregistres.add(nouveau);
 		return nouveau;
 	}
+
+	public void deconecter(ClientRegistration clients) {
+		this.clients_enregistres.remove(clients);
+	}
+
 	/**
 	 * Permet de créer une connexion client/serveur entre deux clients, et par la
 	 * même occasion d'échanger leurs clés
