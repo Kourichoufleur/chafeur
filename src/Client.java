@@ -29,6 +29,7 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -50,6 +51,7 @@ public class Client {
 	static final String SEP = PARAMETRE.SEP;
 
 	// COMPOSANTS GRAPHIQUES
+
 	// Fenetre Principale
 	private JFrame main_frame;
 	private GridBagLayout main_grid;
@@ -115,6 +117,7 @@ public class Client {
 
 		chat_panel = new JPanel();
 		chat_panel.setLayout(new BoxLayout(chat_panel, BoxLayout.Y_AXIS));
+
 		scroll_chat = new JScrollPane(chat_panel);
 
 		entry_panel = new JPanel(new BorderLayout());
@@ -520,6 +523,9 @@ public class Client {
 
 			}
 
+		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException |
+
+				BadPaddingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
