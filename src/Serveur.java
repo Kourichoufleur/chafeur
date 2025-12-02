@@ -2,6 +2,7 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.InvalidKeyException;
@@ -25,7 +26,12 @@ import javax.crypto.spec.SecretKeySpec;
 // CONNECT|"Server"|pseudo|cle_publique
 // DISCONNECT
 public class Serveur {
+<<<<<<< Updated upstream
 	
+=======
+
+	private static final String SEP = PARAMETRE.SEP;
+>>>>>>> Stashed changes
 	private ArrayList<ClientRegistration> clients_enregistres = new ArrayList<ClientRegistration>();
 	private ServerSocket serveurSocket;
 	private Socket clientSocket;
@@ -223,7 +229,79 @@ public class Serveur {
 		return null;
 	}
 
+<<<<<<< Updated upstream
 	
+=======
+	public boolean groupe_is_unique(String nom) {
+		for (Group groupes : this.groupes_enregistres) {
+			if (groupes.nom_groupe.equals(nom)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	
+	public void broadcast(String group, String message) {
+		Group groupe = find_group_by_name(group);
+		System.out.println("Je broadcast "+message+" sur "+group);
+		if (groupe != null) {
+			for (ClientRegistration client : groupe.membres) {
+				PrintWriter p_out = new PrintWriter(client.out, true);
+				p_out.println(message);
+			}
+		}
+	}
+
+	public String rendre_unique_groupe(String nom_initial) {
+		String nom_test = nom_initial;
+		int compteur = 1;
+		while (!this.groupe_is_unique(nom_test)) {
+			nom_test = nom_initial + "_" + compteur;
+			compteur += 1;
+		}
+		return nom_test;
+	}
+
+	public Group creer_groupe(String nom, ArrayList<ClientRegistration> membres) throws NoSuchAlgorithmException {
+		nom = rendre_unique_groupe(nom);
+		Group nouveau = new Group(nom);
+		for (ClientRegistration clients : membres) {
+			nouveau.ajouter_membre(clients);
+		}
+		this.groupes_enregistres.add(nouveau);
+		return nouveau;
+	}
+	
+	public void ajouter_membre_et_update(String nom_groupe, ClientRegistration membre) {
+		Group le_groupe = find_group_by_name(nom_groupe);
+		if (le_groupe != null) {
+			le_groupe.ajouter_membre(membre);
+			broadcast(nom_groupe, "UPDATE_GROUP"+SEP+nom_groupe+SEP+stringOfMembers(nom_groupe));
+		}
+	}
+	
+	public String stringOfMembers(String groupe) {
+		String res = "";
+		Group group = find_group_by_name(groupe);
+		if (group != null) {
+			for (ClientRegistration member : group.membres) {
+				res += member.pseudo+"|";
+			}
+			if (res.length()>1) {
+				res = res.substring(0, res.length()-1);
+			}
+		}
+		
+		return res;
+		
+	}
+
+	public void deconecter(ClientRegistration clients) {
+		this.clients_enregistres.remove(clients);
+	}
+
+>>>>>>> Stashed changes
 	/**
 	 * Permet de créer une connexion client/serveur entre deux clients, et par la même occasion d'échanger leurs clés
 	 * @throws InvalidKeyException

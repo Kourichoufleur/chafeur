@@ -69,6 +69,7 @@ public class ClientRegistration implements Runnable {
 							out.println("Votre pseudo '" + this.pseudo + "' a été enregistré avec succès.");
 						}
 
+<<<<<<< Updated upstream
 						host.groupe_general.ajouter_membre(this);
 					}
 					else if (type_message == "MESSAGE_TO") { // MESSAGE|destinataire|contenu_message
@@ -93,14 +94,74 @@ public class ClientRegistration implements Runnable {
 										PrintWriter out_membre = new PrintWriter(membre.socket.getOutputStream(), true);
 											out_membre.println("MESSAGE_FROM|" + this.pseudo + "|" + group_destinataire.nom_groupe + "|" + destinataire + "|" + contenu_message);
 									}
+=======
+					out.println("SET_PSEUDO" + SEP + "server" + SEP + SEP + this.pseudo + SEP
+							+ funcs.RSA_ENCRYPT(host.groupe_general.cle_secrete, clientClePublique));
+
+					host.groupe_general.ajouter_membre(this);
+					host.broadcast("global", "UPDATE_GROUP"+SEP+"global"+SEP+host.stringOfMembers("global"));
+					break;
+				case "MESSAGE_TO": // MESSAGE|de_qui|destinataire|contenu_message
+					// Gérer l'envoie de message
+					String destinataire = message_slitted[2];
+					String contenu_message = message_slitted[3];
+					ClientRegistration client_destinataire = host.find_by_pseudo(destinataire);
+					if (client_destinataire != null) {
+						PrintWriter out_destinataire = new PrintWriter(client_destinataire.socket.getOutputStream(),
+								true);
+						out_destinataire.println(
+								"MESSAGE_FROM" + SEP + this.pseudo + SEP + destinataire + SEP + contenu_message);
+					} else {
+						// On cherche si c'est un groupe
+						Group group_destinataire = host.find_group_by_name(destinataire);
+						if (group_destinataire != null) {
+							System.out.println(destinataire);
+							// Envoyer le message à tous les membres du groupe
+							for (ClientRegistration membre : group_destinataire.get_membres()) {
+								if (!membre.pseudo.equals(this.pseudo)) { // Ne pas renvoyer au sender
+									PrintWriter out_membre = new PrintWriter(membre.socket.getOutputStream(), true);
+									out_membre.println("MESSAGE_FROM" + SEP + this.pseudo + SEP
+											+ group_destinataire.nom_groupe + SEP + contenu_message);
+>>>>>>> Stashed changes
 								}
 							}
 							else 
 							{out.println("Erreur : destinataire '" + destinataire + "' non trouvé.");}
 						}
 					}
+<<<<<<< Updated upstream
 
 		
+=======
+					break;
+				case "GROUP1":
+					String[] nom_et_membres = message_slitted[3].split(SEP);
+					ArrayList<ClientRegistration> membres = new ArrayList<ClientRegistration>();
+					
+					String non_existant = "";
+					String all_names = ""; // Stock l'ensemble des pseudos valides d'un groupe
+					membres.add(this);
+					all_names += this.pseudo + "|";
+					ClientRegistration membre;
+					for (int i = 1; i < nom_et_membres.length; i++) {
+						if ((membre = host.find_by_pseudo(nom_et_membres[i])) != null) {
+							membres.add(membre);
+							all_names += nom_et_membres[i]+"|";
+						} else {
+							non_existant += SEP + membre;
+						}
+
+					}
+					all_names = all_names.substring(0, all_names.length()-1); // enlever la barre | en trop
+					Group nouveau = this.host.creer_groupe(nom_et_membres[0], membres);
+					
+					out.println(
+							"GROUP2" + SEP + "server" + SEP + pseudo + SEP + nouveau.nom_groupe + SEP + non_existant);
+					for (ClientRegistration clients : membres) {
+						PrintWriter out_clients = new PrintWriter(clients.socket.getOutputStream(), true);
+						out_clients.println("GROUP3" + SEP + "server" + SEP + SEP + nom_et_membres[0] + SEP
+								+ funcs.RSA_ENCRYPT(nouveau.cle_secrete, clients.cle_public)+SEP+all_names);
+>>>>>>> Stashed changes
 
 					else if (type_message == "DISCONNECT") { // DISCONNECT
 						break;
