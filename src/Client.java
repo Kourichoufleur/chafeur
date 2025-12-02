@@ -50,9 +50,6 @@ public class Client {
 	static final String SEP = PARAMETRE.SEP;
 
 	// COMPOSANTS GRAPHIQUES
-	
-	
-	
 	// Fenetre Principale
 	private JFrame main_frame;
 	private GridBagLayout main_grid;
@@ -118,7 +115,6 @@ public class Client {
 
 		chat_panel = new JPanel();
 		chat_panel.setLayout(new BoxLayout(chat_panel, BoxLayout.Y_AXIS));
-		// ajoute ici ton historychat, chatInput, send_message, etc.
 		scroll_chat = new JScrollPane(chat_panel);
 
 		entry_panel = new JPanel(new BorderLayout());
@@ -225,8 +221,7 @@ public class Client {
 				update_actual_chat();
 				update_Group_Scroll_Bar();
 			});
-			
-			
+
 			if (ngroupe.getText().equals(actual_chat)) {
 				ngroupe.setBackground(Color.BLUE);
 				ngroupe.setForeground(Color.white);
@@ -253,7 +248,6 @@ public class Client {
 		this.pseudo = this.pseudo + String.valueOf(nb);
 		updateTitle();
 	}
-	
 
 	public static void main(String[] args) throws Exception {
 
@@ -262,98 +256,93 @@ public class Client {
 		Client moi = new Client("Gabriel");
 		moi.main_frame.setVisible(true);
 		try {
-		Socket socket = new Socket(host, port);
-		BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
-		BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-		PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-		// sur la fermeture de la fenetre ca déconecte
-		moi.main_frame.addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {
+			Socket socket = new Socket(host, port);
+			BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
+			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+			// sur la fermeture de la fenetre ca déconecte
+			moi.main_frame.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent e) {
+					try {
+						socket.close();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					moi.main_frame.dispose();
+				}
+			});
+
+			moi.send_message.addActionListener(e -> {
 				try {
-					socket.close();
-				} catch (IOException e1) {
+					moi.envoie_message("MESSAGE_TO", moi.actual_chat, moi.chatInput.getText(), out);
+				} catch (Exception e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
 				}
-				moi.main_frame.dispose();
-			}
-		});
+				moi.update_actual_chat();
+				moi.update_Group_Scroll_Bar();
+				moi.chatInput.setText("");
+			});
 
-		moi.send_message.addActionListener(e -> {
-			try {
-				moi.envoie_message("MESSAGE_TO", moi.actual_chat, moi.chatInput.getText(), out);
-			} catch (Exception e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-			moi.update_actual_chat();
-			moi.update_Group_Scroll_Bar();
-			moi.chatInput.setText("");
-		});
+			moi.register(out, console, in);
 
-		moi.register(out, console, in);
+			moi.add_group_btn.addActionListener(e -> {
+				moi.lancerCreationGroupe(out);
+			});
 
-		moi.add_group_btn.addActionListener(e -> {
-			moi.lancerCreationGroupe(out);
-		});
+			// out =
+			// BufferedReader in =
+			Thread ecoute = new Thread(() -> { // ceci est un thread
+				String message;
+				try {
+					while ((message = in.readLine()) != null) {
 
-		// out =
-		// BufferedReader in =
-		Thread ecoute = new Thread(() -> { // ceci est un thread
-			String message;
-			try {
-				while ((message = in.readLine()) != null) {
+						moi.recevoir_message(message, out);
 
-					moi.recevoir_message(message, out);
-
-				}
-			} catch (SocketException e) {
-				System.out.println("je suis plus la");
-			} catch (Exception e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-
-		});
-		ecoute.start();
-		Thread clavier = new Thread(() -> {// ceci est un thread mais pas le meme
-			String message;
-			try {
-				while ((message = console.readLine()) != null) {
-					if (message.equalsIgnoreCase("bye")) {
-						socket.close();
-						JOptionPane.showMessageDialog(moi.main_frame, "Au revoir et à bientôt :DD");
-					} else if (message.toLowerCase().equals("quoi") || message.toLowerCase().equals("quoi?")
-							|| message.toLowerCase().equals("quoi ?")) {
-						JOptionPane.showMessageDialog(moi.main_frame, "Feur !");
-						moi.envoie_message("MESSAGE_TO", "global",
-								"Je suis un gros nullos qui a dit quoi dites moi tous feur !", out);
-					} else if (message.contains("creerGroupe")) {
-						String[] tab = message.split("\\|", 3);
-						moi.creer_groupe(tab[1], new ArrayList<String>(Arrays.asList(tab[2].split("\\|"))), out);
-					} else if (message.contains("MP")) {
-						String[] tab = message.split("\\|");
-						moi.envoie_message("MESSAGE_TO", tab[1], tab[2], out);
-
-					} else {
-						System.out.print(moi.pseudo + " : "); // au
-						moi.envoie_message("MESSAGE_TO", "global", message, out); // on met "" car pour l'instant on
-																					// envoit
 					}
-					// groupe global
-
+				} catch (SocketException e) {
+					System.out.println("je suis plus la");
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
 				}
-			} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
 
-		});}
-		catch (ConnectException h) {
-			JOptionPane.showMessageDialog(moi.main_frame, "Nous sommes navré mais la connexion n'a pas pu être établie. Vérifiez votre IP ainsi que l'état du Réseau");
+			});
+			ecoute.start();
+			/**
+			 * Thread clavier = new Thread(() -> {// ceci est un thread mais pas le meme
+			 * String message; try { while ((message = console.readLine()) != null) { if
+			 * (message.equalsIgnoreCase("bye")) { socket.close();
+			 * JOptionPane.showMessageDialog(moi.main_frame, "Au revoir et à bientôt :DD");
+			 * } else if (message.toLowerCase().equals("quoi") ||
+			 * message.toLowerCase().equals("quoi?") || message.toLowerCase().equals("quoi
+			 * ?")) { JOptionPane.showMessageDialog(moi.main_frame, "Feur !");
+			 * moi.envoie_message("MESSAGE_TO", "global", "Je suis un gros nullos qui a dit
+			 * quoi dites moi tous feur !", out); } else if
+			 * (message.contains("creerGroupe")) { String[] tab = message.split("\\|", 3);
+			 * moi.creer_groupe(tab[1], new
+			 * ArrayList<String>(Arrays.asList(tab[2].split("\\|"))), out); } else if
+			 * (message.contains("MP")) { String[] tab = message.split("\\|");
+			 * moi.envoie_message("MESSAGE_TO", tab[1], tab[2], out);
+			 * 
+			 * } else { System.out.print(moi.pseudo + " : "); // au
+			 * moi.envoie_message("MESSAGE_TO", "global", message, out); // on met "" car
+			 * pour l'instant on // envoit } // groupe global
+			 * 
+			 * } } catch (InvalidKeyException | NoSuchAlgorithmException |
+			 * NoSuchPaddingException | IOException e) { // TODO Auto-generated catch block
+			 * e.printStackTrace(); }
+			 * 
+			 * });
+			 **/
+		} catch (ConnectException h) {
+			JOptionPane.showMessageDialog(moi.main_frame,
+					"Nous sommes navré mais la connexion n'a pas pu être établie. Vérifiez votre IP ainsi que l'état du Réseau");
 			moi.main_frame.dispose();
-		};
+		}
+		;
 		// clavier.start();
 
 	}
@@ -386,10 +375,7 @@ public class Client {
 	 **/
 
 	// Se connecte au serveur avec le port en paramètre
-	
-	
 
-	
 	public void updateTitle() {
 		String title = Client.BASE_TITLE;
 		if (pseudo != "" && pseudo != null) {
@@ -397,8 +383,7 @@ public class Client {
 		}
 		main_frame.setTitle(title);
 	}
-	
-	
+
 	public void register(PrintWriter out, BufferedReader clavier_console, BufferedReader in) throws Exception {
 		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
 		keyGen.initialize(2048);
@@ -464,27 +449,35 @@ public class Client {
 	public void recevoir_message(String message, PrintWriter out) throws Exception {
 		try {
 			boolean cond = true;
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 			String[] decoupe = message.split(SEP, 4);
 			switch (decoupe[0]) {
 			case "SET_PSEUDO":
-				String[] pseudo_et_cle = decoupe[3].split(SEP);
-				this.pseudo = pseudo_et_cle[0];
-				this.contacts.add(new Contact("global", funcs.RSA_DECRYPT(pseudo_et_cle[1], this.cle_prive)));
+				String[] pseudo_et_cle_et_histo = decoupe[3].split(SEP);
+				System.out.println(Arrays.toString(pseudo_et_cle_et_histo));
+				this.pseudo = pseudo_et_cle_et_histo[0];
+				SecretKey clef = funcs.RSA_DECRYPT(pseudo_et_cle_et_histo[1], this.cle_prive);
+				this.contacts.add(new Contact("global", clef));
 				JOptionPane.showMessageDialog(main_frame, "Votre pseudo a été définit comme étant : " + this.pseudo);
+				cipher.init(Cipher.DECRYPT_MODE, clef);
+				for (int i = 2; i < pseudo_et_cle_et_histo.length; i++) {
+					String[] tab = pseudo_et_cle_et_histo[i].split(":", 2);
+					this.historique.get("global").add(new JLabel(tab[0] + ": "
+							+ new String(cipher.doFinal(Base64.getDecoder().decode(tab[1])), StandardCharsets.UTF_8)));
+				}
 				update_Group_Scroll_Bar();
 				updateTitle();
+				update_actual_chat();
 				break;
 			case "MESSAGE_FROM":
 
 				for (Contact mon_ami : contacts) {
 					if (mon_ami.pseudo.equals(decoupe[2])) {
 						// Decrypte le message et l'affiche
-						Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
 						cipher.init(Cipher.DECRYPT_MODE, mon_ami.la_clef);
 						byte[] valeur = Base64.getDecoder().decode(decoupe[3]);
 						String msg_final = ("> " + decoupe[1] + ": "
 								+ new String(cipher.doFinal(valeur), StandardCharsets.UTF_8));
-
 						historique.get(decoupe[2]).add(new JLabel(msg_final));
 
 						if (decoupe[2].equals(actual_chat)) {
@@ -527,8 +520,6 @@ public class Client {
 
 			}
 
-		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
-				| BadPaddingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

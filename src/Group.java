@@ -8,6 +8,7 @@ public class Group {
 	String nom_groupe;
 	ArrayList<ClientRegistration> membres;
 	SecretKey cle_secrete;
+	ArrayList<String> historique;
 
 	public Group(String nom_groupe) throws NoSuchAlgorithmException {
 		this.nom_groupe = nom_groupe;
@@ -15,6 +16,7 @@ public class Group {
 		KeyGenerator keyGen = KeyGenerator.getInstance("AES");
 		keyGen.init(128);
 		this.cle_secrete = keyGen.generateKey();
+		this.historique = new ArrayList<String>();
 	}
 
 	public void ajouter_membre(ClientRegistration client) {
@@ -27,5 +29,26 @@ public class Group {
 
 	public ArrayList<ClientRegistration> get_membres() {
 		return this.membres;
+	}
+
+	public void ajour_histo(String message) {
+		if (this.historique.size() == PARAMETRE.taille_histo) {
+			this.historique.remove(0);
+
+		}
+
+		this.historique.add(message);
+	}
+
+	public String histo_to_msg() {
+		String SEP = PARAMETRE.SEP;
+		String res = SEP;
+		for (String messages : this.historique) {
+			res += messages + SEP;
+		}
+		if (res.equals(SEP)) {
+			return "";
+		}
+		return res;
 	}
 }

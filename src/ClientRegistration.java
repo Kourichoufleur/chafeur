@@ -67,9 +67,9 @@ public class ClientRegistration implements Runnable {
 					String clientClePublique = new_split[1];
 					this.pseudo = this.host.rendre_unique(clientPseudo);
 					this.cle_public = clientClePublique;
-
 					out.println("SET_PSEUDO" + SEP + "server" + SEP + SEP + this.pseudo + SEP
-							+ funcs.RSA_ENCRYPT(host.groupe_general.cle_secrete, clientClePublique));
+							+ funcs.RSA_ENCRYPT(host.groupe_general.cle_secrete, clientClePublique)
+							+ host.groupe_general.histo_to_msg());// il y a déja SEP au début de histo_to_msg
 
 					host.groupe_general.ajouter_membre(this);
 					break;
@@ -79,6 +79,7 @@ public class ClientRegistration implements Runnable {
 					String contenu_message = message_slitted[3];
 					ClientRegistration client_destinataire = host.find_by_pseudo(destinataire);
 					if (client_destinataire != null) {
+						// un used
 						PrintWriter out_destinataire = new PrintWriter(client_destinataire.socket.getOutputStream(),
 								true);
 						out_destinataire.println(
@@ -88,10 +89,12 @@ public class ClientRegistration implements Runnable {
 						Group group_destinataire = host.find_group_by_name(destinataire);
 						if (group_destinataire != null) {
 							System.out.println(destinataire);
+							group_destinataire.ajour_histo("> " + this.pseudo + ":" + contenu_message);
 							// Envoyer le message à tous les membres du groupe
 							for (ClientRegistration membre : group_destinataire.get_membres()) {
 								if (!membre.pseudo.equals(this.pseudo)) { // Ne pas renvoyer au sender
 									PrintWriter out_membre = new PrintWriter(membre.socket.getOutputStream(), true);
+
 									out_membre.println("MESSAGE_FROM" + SEP + this.pseudo + SEP
 											+ group_destinataire.nom_groupe + SEP + contenu_message);
 								}
