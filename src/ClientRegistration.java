@@ -162,9 +162,9 @@ public class ClientRegistration implements Runnable {
 						}
 					}
 					host.ajouter_membres_et_update(groupe, membres_a_updates);
-				break;
+					break;
 				case "DISCONNECT" :
-					host.deconnect(this);
+					host.deconnect(this, message_slitted[3]);
 					break;
 				}
 			

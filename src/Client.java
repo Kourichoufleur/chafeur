@@ -98,6 +98,8 @@ public class Client {
 	private HashMap<String, ArrayList<JLabel>> historique = new HashMap<String, ArrayList<JLabel>>();
 	String actual_chat = "global";
 	private JScrollPane scroll_chat;
+	private JPanel leave_and_info_panel;
+	private JButton quitter_app_btn;
 
 	public Client(String pseudo)
 			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
@@ -154,9 +156,19 @@ public class Client {
 		quitter_groupe = new JButton("Quitter");
 		ajouter_membre = new JButton("Ajouter");
 		info_membre_group = new JButton("Membres");
+		
+		leave_and_info_panel = new JPanel(new BorderLayout());
+		quitter_app_btn = new JButton("Fermer");
+		quitter_app_btn.setBackground(Color.RED);
+		quitter_app_btn.setForeground(Color.WHITE);
+		
+		
 		group_info_panel.add(info_membre_group, BorderLayout.WEST);
 		group_info_panel.add(ajouter_membre, BorderLayout.CENTER);
 		group_info_panel.add(quitter_groupe, BorderLayout.EAST);
+		
+		leave_and_info_panel.add(group_info_panel, BorderLayout.CENTER);
+		leave_and_info_panel.add(quitter_app_btn, BorderLayout.EAST);
 		
 		
 
@@ -228,6 +240,8 @@ public class Client {
 		return new String[0];
 		
 	}
+	
+	
 
 	private void lancerCreationGroupe(PrintWriter out, String[] people) {
 		String nom_groupe = JOptionPane.showInputDialog(main_frame, "Comment voulez appellez le nouveau groupe ?");
@@ -295,7 +309,7 @@ public class Client {
 		
 		
 		
-		all_for_chat_panel.add(group_info_panel, BorderLayout.NORTH);
+		all_for_chat_panel.add(leave_and_info_panel, BorderLayout.NORTH);
 		all_for_chat_panel.add(entry_panel, BorderLayout.SOUTH);
 		all_for_chat_panel.add(scroll_chat, BorderLayout.CENTER);
 
@@ -332,6 +346,23 @@ public class Client {
 	        dialog.setLocationRelativeTo(main_frame);
 	        dialog.setVisible(true);
 		}
+	}
+	
+	
+	void deconnecter(PrintWriter out, Socket host) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException, IOException {
+		
+		String message = JOptionPane.showInputDialog(main_frame, "Vous partez déjà ?! Un dernier mot ? (entrez 'annuler' pour ne pas quitter)");
+		
+		if (!message.toLowerCase().equals("annuler")) {
+			envoie_message("DISCONNECT","server",message,out);
+			try  {
+			host.close();
+			}
+			finally {} ;
+			System.exit(0);
+		}
+		
+		
 	}
 	
 	void partir_groupe(String groupe, PrintWriter out) {
@@ -525,6 +556,13 @@ public class Client {
 			moi.info_membre_group.addActionListener(e -> {moi.afficher_membre(moi.actual_chat);});
 			moi.quitter_groupe.addActionListener(e -> {moi.partir_groupe(moi.actual_chat, out);});
 			moi.ajouter_membre.addActionListener(e -> {moi.ajouter_membre(moi.actual_chat, out);});
+			
+			moi.quitter_app_btn.addActionListener(e -> {try {
+				moi.deconnecter(out, socket);
+			} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}});
 			
 
 			moi.send_message.addActionListener(e -> {
@@ -731,6 +769,7 @@ public class Client {
 				updateTitle();
 				update_actual_chat();
 				break;
+				
 			case "MESSAGE_FROM":
 
 				for (Contact mon_ami : contacts) {
@@ -756,6 +795,7 @@ public class Client {
 					System.out.println("ne doit jamais arriver");
 				}
 				break;
+				
 			case "GROUP2":
 				String[] nom_et_membre_ban = decoupe[3].split(SEP, 2);
 				JOptionPane.showMessageDialog(main_frame, "Votre nom de groupe est : " + nom_et_membre_ban[0]);
@@ -795,6 +835,7 @@ public class Client {
 				}
 			
 				break;
+				
 			case "HAS_LEAVED":
 				
 				String groupe_ = decoupe[1];
@@ -804,13 +845,15 @@ public class Client {
 					historique.get(decoupe[1]).add(new JLabel(membre+" a quitté le salon... sortez vos mouchoirs"));
 				}
 				else {
-					historique.get(decoupe[1]).add(new JLabel(membre+" a quitté le salon... ses derniers  : ''"+message_adieu+"''"));
+					historique.get(decoupe[1]).add(new JLabel(membre+" a quitté le salon... ses derniers mots : ''"+message_adieu+"''"));
 				}
 				
 				
 				if (groupe_.equals(actual_chat)) {
 					update_actual_chat();
 				}
+				
+				break;
 				
 			default:
 			

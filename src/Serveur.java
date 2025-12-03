@@ -274,11 +274,23 @@ public class Serveur {
 			if (co) {
 				groupe.retirer_membre(client);
 				broadcast(groupe.nom_groupe, "UPDATE_GROUP"+SEP+groupe.nom_groupe+SEP+stringOfMembers(groupe.nom_groupe)+SEP);
-				broadcast(groupe.nom_groupe, "HAS_LEAVED"+SEP+groupe.nom_groupe+SEP+client.pseudo);
+				broadcast(groupe.nom_groupe, "HAS_LEAVED"+SEP+groupe.nom_groupe+SEP+client.pseudo+SEP+" ");
 			}
 			
 		}
 	}
+	
+	public void deconnect(ClientRegistration client, String message_adieu) {
+		for (Group groupe : groupes_enregistres) {
+			boolean co = groupe.membres.contains(client);
+			if (co) {
+				groupe.retirer_membre(client);
+				broadcast(groupe.nom_groupe, "UPDATE_GROUP"+SEP+groupe.nom_groupe+SEP+stringOfMembers(groupe.nom_groupe)+SEP);
+				broadcast(groupe.nom_groupe, "HAS_LEAVED"+SEP+groupe.nom_groupe+SEP+client.pseudo+SEP+message_adieu);
+			}
+		}
+	}
+	
 	
 	public String stringOfMembers(String groupe) {
 		String res = "";
