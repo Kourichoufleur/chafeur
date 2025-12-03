@@ -70,8 +70,10 @@ public class ClientRegistration implements Runnable {
 					out.println("SET_PSEUDO" + SEP + "server" + SEP + SEP + this.pseudo + SEP
 							+ funcs.RSA_ENCRYPT(host.groupe_general.cle_secrete, clientClePublique)
 							+ host.groupe_general.histo_to_msg());// il y a déja SEP au début de histo_to_msg
-
+           
 					host.groupe_general.ajouter_membre(this);
+					host.broadcast("global", "UPDATE_GROUP"+SEP+"global"+SEP+host.stringOfMembers("global"));
+            
 					break;
 				case "MESSAGE_TO": // MESSAGE|de_qui|destinataire|contenu_message
 					// Gérer l'envoie de message
@@ -79,7 +81,7 @@ public class ClientRegistration implements Runnable {
 					String contenu_message = message_slitted[3];
 					ClientRegistration client_destinataire = host.find_by_pseudo(destinataire);
 					if (client_destinataire != null) {
-						// un used
+						// unused
 						PrintWriter out_destinataire = new PrintWriter(client_destinataire.socket.getOutputStream(),
 								true);
 						out_destinataire.println(
@@ -94,7 +96,6 @@ public class ClientRegistration implements Runnable {
 							for (ClientRegistration membre : group_destinataire.get_membres()) {
 								if (!membre.pseudo.equals(this.pseudo)) { // Ne pas renvoyer au sender
 									PrintWriter out_membre = new PrintWriter(membre.socket.getOutputStream(), true);
-
 									out_membre.println("MESSAGE_FROM" + SEP + this.pseudo + SEP
 											+ group_destinataire.nom_groupe + SEP + contenu_message);
 								}
@@ -103,6 +104,29 @@ public class ClientRegistration implements Runnable {
 							out.println("Erreur : destinataire '" + destinataire + "' non trouvé.");
 						}
 					}
+		
+					break;
+				case "GROUP1":
+					String[] nom_et_membres = message_slitted[3].split(SEP);
+					ArrayList<ClientRegistration> membres = new ArrayList<ClientRegistration>();
+					
+					String non_existant = "";
+					String all_names = ""; // Stock l'ensemble des pseudos valides d'un groupe
+					membres.add(this);
+					all_names += this.pseudo + "|";
+					ClientRegistration membre;
+					for (int i = 1; i < nom_et_membres.length; i++) {
+						if ((membre = host.find_by_pseudo(nom_et_membres[i])) != null) {
+							membres.add(membre);
+							all_names += nom_et_membres[i]+"|";
+						} else {
+							non_existant += SEP + membre;
+						}
+
+					}
+					all_names = all_names.substring(0, all_names.length()-1); // enlever la barre | en trop
+					Group nouveau = this.host.creer_groupe(nom_et_membres[0], membres);
+					
 					break;
 				case "GROUP1":
 					String[] nom_et_membres = message_slitted[3].split(SEP);
@@ -124,7 +148,7 @@ public class ClientRegistration implements Runnable {
 					for (ClientRegistration clients : membres) {
 						PrintWriter out_clients = new PrintWriter(clients.socket.getOutputStream(), true);
 						out_clients.println("GROUP3" + SEP + "server" + SEP + SEP + nom_et_membres[0] + SEP
-								+ funcs.RSA_ENCRYPT(nouveau.cle_secrete, clients.cle_public));
+								+ funcs.RSA_ENCRYPT(nouveau.cle_secrete, clients.cle_public)+SEP+all_names);
 
 					}
 				}

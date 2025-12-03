@@ -24,12 +24,26 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
+
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -39,6 +53,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
+
 
 public class Client {
 	private int ID;
@@ -84,6 +100,7 @@ public class Client {
 			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
 			IllegalBlockSizeException, BadPaddingException, ClassNotFoundException, IOException {
 		this.pseudo = pseudo;
+		register();
 
 		groupe_button_list = new ArrayList<>();
 
@@ -117,7 +134,7 @@ public class Client {
 
 		chat_panel = new JPanel();
 		chat_panel.setLayout(new BoxLayout(chat_panel, BoxLayout.Y_AXIS));
-
+		// ajoute ici ton historychat, chatInput, send_message, etc.
 		scroll_chat = new JScrollPane(chat_panel);
 
 		entry_panel = new JPanel(new BorderLayout());
@@ -167,20 +184,79 @@ public class Client {
 		main_frame.setVisible(true);
 
 	}
+	public Contact get_group(String group_name) {
+		for (Contact c : contacts) {
+			if (c.pseudo.equals(group_name)) return c;
+		}
+		return new Contact("", null);
+	}
+	
+	public String[] get_other_users(String group_name) {
+		
+		
+		for (Contact c : contacts) {
+			if (c.pseudo.equals(group_name)) {
+				ArrayList<String> list_others = new ArrayList<String>();
+				for (String user : c.users) {
+					if (!user.equals(this.pseudo)) list_others.add(user);
+				}
+				String[] res = new String[list_others.size()];
+				for (int i = 0; i<list_others.size(); i++) {
+					res[i] = list_others.get(i);
+				}
+				return res;
+				
+				
+			}
+		}
+		return new String[0];
+		
+	}
 
-	private void lancerCreationGroupe(PrintWriter out) {
+	private void lancerCreationGroupe(PrintWriter out, String[] people) {
 		String nom_groupe = JOptionPane.showInputDialog(main_frame, "Comment voulez appellez le nouveau groupe ?");
 		while (nom_groupe.strip().equals("")) {
 			nom_groupe = JOptionPane.showInputDialog(main_frame, "Veuillez écrire quelque chose quand même...");
 		}
+		
+		final String nom_groupe_def = nom_groupe;
 
+		// Objectif : changer cet fenetre de dialogue en une liste de tous les pseudos
 		// Ouverture de la liste des pseudo avec un truc pour cocher (plus tard)
-		String nom_poto = JOptionPane.showInputDialog(main_frame, "Qui ajouter ?");
+		// String nom_poto = JOptionPane.showInputDialog(main_frame, "Qui ajouter ?");
+		
+		JDialog dialog = new JDialog(main_frame, "Qui ajouter au groupe ?", true);
+        dialog.setLayout(new BorderLayout());
+        JPanel panelListe = new JPanel();
+        panelListe.setLayout(new BoxLayout(panelListe, BoxLayout.Y_AXIS));
 
-		ArrayList<String> a = new ArrayList<String>();
-		a.add(nom_poto);
+        List<JCheckBox> checkboxes = new ArrayList<>();
+        for (String s : people) {
+            JCheckBox cb = new JCheckBox(s);
+            checkboxes.add(cb);
+            panelListe.add(cb);
+        }
 
-		creer_groupe(nom_groupe, a, out);
+        JButton valider = new JButton("Valider");
+        valider.addActionListener(e -> {
+            ArrayList<String> selections = new ArrayList<String>();
+            for (JCheckBox cb : checkboxes) {
+                if (cb.isSelected()) {
+                    selections.add(cb.getText());
+                }
+            }
+            creer_groupe(nom_groupe_def, selections, out);
+            dialog.dispose();
+        });
+
+        dialog.add(new JScrollPane(panelListe), BorderLayout.CENTER);
+        dialog.add(valider, BorderLayout.SOUTH);
+
+        dialog.setSize(300, 300);
+        dialog.setLocationRelativeTo(main_frame);
+        dialog.setVisible(true);
+
+		
 
 		update_actual_chat();
 
@@ -224,7 +300,8 @@ public class Client {
 				update_actual_chat();
 				update_Group_Scroll_Bar();
 			});
-
+			
+			
 			if (ngroupe.getText().equals(actual_chat)) {
 				ngroupe.setBackground(Color.BLUE);
 				ngroupe.setForeground(Color.white);
@@ -304,6 +381,9 @@ public class Client {
 
 						moi.recevoir_message(message, out);
 
+		moi.add_group_btn.addActionListener(e -> {
+			moi.lancerCreationGroupe(out, moi.get_other_users("global"));
+		});
 					}
 				} catch (SocketException e) {
 					System.out.println("je suis plus la");
@@ -448,6 +528,7 @@ public class Client {
 
 		}
 	}
+	
 
 	public void recevoir_message(String message, PrintWriter out) throws Exception {
 		try {
@@ -508,18 +589,38 @@ public class Client {
 			case "GROUP3":
 
 				// création du groupe
-				String[] nom_et_cle = decoupe[3].split(SEP);
+				String[] nom_et_cle_et_membres = decoupe[3].split(SEP);
 				// System.out.println("new serv"+ nom_et_cle[0]);
-				this.contacts.add(new Contact(nom_et_cle[0], funcs.RSA_DECRYPT(nom_et_cle[1], this.cle_prive)));
-				this.historique.put(nom_et_cle[0], new ArrayList<JLabel>());
-
+				Contact nouveau_contact = new Contact(nom_et_cle_et_membres[0], funcs.RSA_DECRYPT(nom_et_cle_et_membres[1], this.cle_prive));
+				
+				this.historique.put(nom_et_cle_et_membres[0], new ArrayList<JLabel>());
+				
+				String[] membres = nom_et_cle_et_membres[2].split("\\|");
+				for (String membre : membres) {
+					nouveau_contact.users.add(membre);
+				}
+				
+				this.contacts.add(nouveau_contact);
+        
 				// System.out.println("Vous etes dans le groupe : " + nom_et_cle[0]);
 				update_Group_Scroll_Bar();
 
 				break;
+
+			case "UPDATE_GROUP":
+				
+				String groupe = decoupe[1];
+				String[] membres1 = decoupe[2].split("\\|");
+				System.out.println("J'update le groupe "+groupe);
+				Contact groupe_trouve;
+				if ((groupe_trouve=get_group(groupe)) != null) {
+					groupe_trouve.users = new ArrayList<String>(Arrays.asList(membres1));
+				}
+        break;
 			default:
 				System.out.println(message);
-				break;
+			  break;
+			
 
 			}
 

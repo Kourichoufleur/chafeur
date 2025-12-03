@@ -1,6 +1,7 @@
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.security.InvalidKeyException;
@@ -18,7 +19,7 @@ import javax.crypto.NoSuchPaddingException;
 // CONNECT|"Server"|pseudo|cle_publique
 // DISCONNECT
 public class Serveur {
-
+	private static final String SEP = PARAMETRE.SEP;
 	private ArrayList<ClientRegistration> clients_enregistres = new ArrayList<ClientRegistration>();
 	private ServerSocket serveurSocket;
 	private Socket clientSocket;
@@ -191,6 +192,7 @@ public class Serveur {
 		return null;
 	}
 
+	
 	public boolean groupe_is_unique(String nom) {
 		for (Group groupes : this.groupes_enregistres) {
 			if (groupes.nom_groupe.equals(nom)) {
@@ -198,6 +200,18 @@ public class Serveur {
 			}
 		}
 		return true;
+	}
+	
+	
+	public void broadcast(String group, String message) {
+		Group groupe = find_group_by_name(group);
+		System.out.println("Je broadcast "+message+" sur "+group);
+		if (groupe != null) {
+			for (ClientRegistration client : groupe.membres) {
+				PrintWriter p_out = new PrintWriter(client.out, true);
+				p_out.println(message);
+			}
+		}
 	}
 
 	public String rendre_unique_groupe(String nom_initial) {
@@ -218,6 +232,30 @@ public class Serveur {
 		}
 		this.groupes_enregistres.add(nouveau);
 		return nouveau;
+	}
+	
+	public void ajouter_membre_et_update(String nom_groupe, ClientRegistration membre) {
+		Group le_groupe = find_group_by_name(nom_groupe);
+		if (le_groupe != null) {
+			le_groupe.ajouter_membre(membre);
+			broadcast(nom_groupe, "UPDATE_GROUP"+SEP+nom_groupe+SEP+stringOfMembers(nom_groupe));
+		}
+	}
+	
+	public String stringOfMembers(String groupe) {
+		String res = "";
+		Group group = find_group_by_name(groupe);
+		if (group != null) {
+			for (ClientRegistration member : group.membres) {
+				res += member.pseudo+"|";
+			}
+			if (res.length()>1) {
+				res = res.substring(0, res.length()-1);
+			}
+		}
+		
+		return res;
+		
 	}
 
 	public void deconecter(ClientRegistration clients) {
