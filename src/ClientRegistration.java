@@ -130,17 +130,48 @@ public class ClientRegistration implements Runnable {
 							"GROUP2" + SEP + "server" + SEP + pseudo + SEP + nouveau.nom_groupe + SEP + non_existant);
 					for (ClientRegistration clients : membres) {
 						PrintWriter out_clients = new PrintWriter(clients.socket.getOutputStream(), true);
-						out_clients.println("GROUP3" + SEP + "server" + SEP + SEP + nom_et_membres[0] + SEP
+						
+						out_clients.println("GROUP3" + SEP + "server" + SEP + SEP + nouveau.nom_groupe + SEP
 								+ funcs.RSA_ENCRYPT(nouveau.cle_secrete, clients.cle_public)+SEP+all_names);
 
 					}
 					
 					break;
+					
+				case "LEAVE_GROUP":
+					String nom_du_groupe = message_slitted[1];
+					
+					try {
+					host.retirer_personne(this, nom_du_groupe);
+					host.broadcast(nom_du_groupe, "UPDATE_GROUP"+SEP+nom_du_groupe+SEP+host.stringOfMembers(nom_du_groupe)+SEP);
+					host.broadcast(nom_du_groupe, "HAS_LEAVED"+SEP+nom_du_groupe+SEP+pseudo);
+						}
+					finally {}
+					
+					
+					
+					break;
+				case "ADD_TO_GROUP" :
+					String groupe = message_slitted[1];
+					String[] membres_update = message_slitted[3].split("\\|");
+					ArrayList<ClientRegistration> membres_a_updates = new ArrayList<ClientRegistration>();
+					for (String membre_ : membres_update) {
+						ClientRegistration membre_trouve = host.find_by_pseudo(membre_);
+						if (membre_trouve != null) {
+							membres_a_updates.add(membre_trouve);
+						}
+					}
+					host.ajouter_membres_et_update(groupe, membres_a_updates);
+				break;
+				case "DISCONNECT" :
+					host.deconnect(this);
+					break;
 				}
+			
 
 			}
-			this.host.deconecter(this);
-			System.out.println(this.pseudo + " n'est plus la");
+			
+			host.deconnect(this);
 			// Maintenant on récupère sa clé publique sans demandé à l'utilisateur
 
 		} catch (

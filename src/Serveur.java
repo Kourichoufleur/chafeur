@@ -234,11 +234,49 @@ public class Serveur {
 		return nouveau;
 	}
 	
-	public void ajouter_membre_et_update(String nom_groupe, ClientRegistration membre) {
+	public String all_pseudo(Group groupe) {
+		String res = "";
+		for (ClientRegistration client : groupe.membres) {
+			res += client.pseudo;
+		}
+		if (res.length()>0) {
+			res = res.substring(0, res.length()-1);
+		}
+		return res;
+	}
+	
+	public void ajouter_membres_et_update(String nom_groupe, ArrayList<ClientRegistration> membres) throws Exception {
 		Group le_groupe = find_group_by_name(nom_groupe);
 		if (le_groupe != null) {
-			le_groupe.ajouter_membre(membre);
+			for (ClientRegistration membre : membres) {
+				if (!le_groupe.membres.contains(membre)) {
+					le_groupe.ajouter_membre(membre);
+					
+				}
+				
+			}
+			
+			for (ClientRegistration membre : membres) {
+				PrintWriter out_clients = new PrintWriter(membre.socket.getOutputStream(), true);
+				out_clients.println("GROUP3" + SEP + "server" + SEP + SEP + le_groupe.nom_groupe + SEP
+				+ funcs.RSA_ENCRYPT(le_groupe.cle_secrete, membre.cle_public)+SEP+all_pseudo(le_groupe));
+			}
+			
+			
 			broadcast(nom_groupe, "UPDATE_GROUP"+SEP+nom_groupe+SEP+stringOfMembers(nom_groupe));
+		}
+	}
+	
+	
+	public void deconnect(ClientRegistration client) {
+		for (Group groupe : groupes_enregistres) {
+			boolean co = groupe.membres.contains(client);
+			if (co) {
+				groupe.retirer_membre(client);
+				broadcast(groupe.nom_groupe, "UPDATE_GROUP"+SEP+groupe.nom_groupe+SEP+stringOfMembers(groupe.nom_groupe)+SEP);
+				broadcast(groupe.nom_groupe, "HAS_LEAVED"+SEP+groupe.nom_groupe+SEP+client.pseudo);
+			}
+			
 		}
 	}
 	
@@ -258,8 +296,12 @@ public class Serveur {
 		
 	}
 
-	public void deconecter(ClientRegistration clients) {
-		this.clients_enregistres.remove(clients);
+	public void retirer_personne(ClientRegistration clientRegistration, String nom_du_groupe) {
+		Group le_groupe = find_group_by_name(nom_du_groupe);
+		
+		if (le_groupe != null) {
+			le_groupe.retirer_membre(clientRegistration);
+		}
 	}
 
 	/**

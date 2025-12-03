@@ -3,6 +3,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
@@ -80,14 +82,15 @@ public class Client {
 	private ArrayList<JButton> groupe_button_list;
 	private JButton add_group_btn;
 
-	// Demandes
-	private JButton demandeAlerteButton;
-
 	// Chat actuel
 	JTextField chatInput;
 	private JPanel chat_panel;
 	JLabel historychat;
 	JButton send_message;
+	JPanel group_info_panel;
+	JButton info_membre_group;
+	JButton quitter_groupe;
+	JButton ajouter_membre;
 	JPanel entry_panel;
 	JPanel all_for_chat_panel;
 
@@ -109,6 +112,8 @@ public class Client {
 		main_frame.setSize(800, 600);
 
 		main_frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+		
+
 
 		main_frame.setResizable(true);
 
@@ -140,6 +145,20 @@ public class Client {
 		entry_panel.add(chatInput, BorderLayout.CENTER);
 		entry_panel.add(send_message, BorderLayout.EAST);
 		entry_panel.setSize(10, 80);
+		
+		
+		
+		
+		// Group info
+		group_info_panel = new JPanel(new BorderLayout());
+		quitter_groupe = new JButton("Quitter");
+		ajouter_membre = new JButton("Ajouter");
+		info_membre_group = new JButton("Membres");
+		group_info_panel.add(info_membre_group, BorderLayout.WEST);
+		group_info_panel.add(ajouter_membre, BorderLayout.CENTER);
+		group_info_panel.add(quitter_groupe, BorderLayout.EAST);
+		
+		
 
 		chatInput.setMinimumSize(new Dimension(10, 50));
 		chatInput.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
@@ -175,9 +194,7 @@ public class Client {
 		add_group_btn = new JButton("Nouveau groupe");
 
 		// UPDATE
-		update_Group_Scroll_Bar();
-
-		update_actual_chat();
+		switch_to_groupe("global");
 
 		// AFFICHAGE
 		main_frame.setVisible(true);
@@ -275,14 +292,165 @@ public class Client {
 		for (JLabel msg : act_msg_list()) {
 			chat_panel.add(msg);
 		}
-
+		
+		
+		
+		all_for_chat_panel.add(group_info_panel, BorderLayout.NORTH);
 		all_for_chat_panel.add(entry_panel, BorderLayout.SOUTH);
-		all_for_chat_panel.add(scroll_chat, BorderLayout.NORTH);
+		all_for_chat_panel.add(scroll_chat, BorderLayout.CENTER);
 
 		all_for_chat_panel.revalidate();
 		all_for_chat_panel.repaint();
-
 	}
+	
+	
+	void afficher_membre(String groupe) {
+		Contact trouve = get_group(groupe);
+		if (trouve != null) {
+			JDialog dialog = new JDialog(main_frame, "Voici la liste des membres du groupe "+groupe, true);
+			String[] people = get_other_users(groupe); 
+			
+	        dialog.setLayout(new BorderLayout());
+	        JPanel panelListe = new JPanel();
+	        panelListe.setLayout(new BoxLayout(panelListe, BoxLayout.Y_AXIS));
+	        
+	        panelListe.add(new JLabel(this.pseudo + " (Vous)"));
+	        for (String s : people) {
+	            JLabel cb = new JLabel("> "+s);
+	            panelListe.add(cb);
+	        }
+
+	        JButton sortir = new JButton("OK");
+	        sortir.addActionListener(e -> {
+	            dialog.dispose();
+	        });
+
+	        dialog.add(new JScrollPane(panelListe), BorderLayout.CENTER);
+	        dialog.add(sortir, BorderLayout.SOUTH);
+
+	        dialog.setSize(350, 250);
+	        dialog.setLocationRelativeTo(main_frame);
+	        dialog.setVisible(true);
+		}
+	}
+	
+	void partir_groupe(String groupe, PrintWriter out) {
+		if (groupe.equals("global")) {
+			JOptionPane.showMessageDialog(main_frame, "Vous ne pouvez pas quitter le salon publique principal !");
+		}
+		else {
+		JDialog dialog = new JDialog(main_frame, "Êtes vous sûr de vouloir partir du groupe "+groupe+"? Vous leur manquerez !", true);
+		dialog.setLayout(new BorderLayout());
+        JPanel panelListe = new JPanel();
+        String[] people = get_other_users(groupe); 
+        panelListe.setLayout(new BoxLayout(panelListe, BoxLayout.Y_AXIS));
+        String[] message_de_tristesse = {" pleurera votre départ", " vous supplie de rester", " implore votre clémence", " veut vous garder à ses côté", " écrira un article sur votre départ", " menace de quitter si vous quitter aussi", " en parlera à son psy", " présent le pire en votre absence", " a besoin de votre réconfort", " est prêt à partir à votre place"};
+        
+        int i = 0;
+        for (String s : people) {
+            JLabel cb = new JLabel("> "+s+message_de_tristesse[(i++)%message_de_tristesse.length]);
+            panelListe.add(cb);
+        }
+
+        JButton sortir = new JButton("Oui !!");
+        sortir.addActionListener(e -> {
+            dialog.dispose();
+            out.println("LEAVE_GROUP"+ SEP + groupe + SEP + SEP);
+            try {historique.remove(groupe);}
+            finally {};
+            
+            try {contacts.remove(get_group(groupe));}
+            finally {};
+            
+            switch_to_groupe("global");
+    		
+        });
+        
+        JButton rester = new JButton("Non");
+        rester.addActionListener(e -> {
+            dialog.dispose();
+            // ouf !
+        });
+        
+        JPanel lesdeuxoptions = new JPanel(new BorderLayout());
+        lesdeuxoptions.add(sortir, BorderLayout.WEST);
+        lesdeuxoptions.add(rester, BorderLayout.EAST);
+
+        dialog.add(new JScrollPane(panelListe), BorderLayout.CENTER);
+        dialog.add(lesdeuxoptions, BorderLayout.SOUTH);
+
+        dialog.setSize(550, 250);
+        dialog.setLocationRelativeTo(main_frame);
+        dialog.setVisible(true);
+		}
+	}
+	
+	void ajouter_membre(String groupe, PrintWriter out) {
+		
+		Contact contact = get_group(groupe);
+		if (contact != null) {
+		
+		JDialog dialog = new JDialog(main_frame, "Qui ajouter au groupe ?", true);
+        dialog.setLayout(new BorderLayout());
+        JPanel panelListe = new JPanel();
+        panelListe.setLayout(new BoxLayout(panelListe, BoxLayout.Y_AXIS));
+
+        List<JCheckBox> checkboxes = new ArrayList<>();
+        for (String s : get_other_users("global")) {
+        	if (!contact.users.contains(s)) {
+        		JCheckBox cb = new JCheckBox(s);
+                checkboxes.add(cb);
+                panelListe.add(cb);
+        	}
+        }
+
+        JButton valider = new JButton("Valider");
+        valider.addActionListener(e -> {
+            String selections = "";
+            boolean found=false;
+            for (JCheckBox cb : checkboxes) {
+                if (cb.isSelected()) {
+                    selections += (cb.getText())+"|";
+                    found=true;
+                }
+            }
+            if (found) {
+            	selections = selections.substring(0, selections.length()-1);
+            	out.println("ADD_TO_GROUP"+SEP+groupe+SEP+SEP+selections);
+            }
+            
+            dialog.dispose();
+        });
+
+        dialog.add(new JScrollPane(panelListe), BorderLayout.CENTER);
+        dialog.add(valider, BorderLayout.SOUTH);
+
+        dialog.setSize(300, 300);
+        dialog.setLocationRelativeTo(main_frame);
+        dialog.setVisible(true);
+
+		
+
+		update_actual_chat();
+
+		update_Group_Scroll_Bar();
+		
+		}
+	}
+	
+	void switch_to_groupe(String groupe) {
+		actual_chat = groupe;
+		
+		quitter_groupe.setEnabled(!(groupe.equals("global")));
+		ajouter_membre.setEnabled(!(groupe.equals("global")));
+		
+        update_Group_Scroll_Bar();
+        update_actual_chat();
+	}
+	
+	
+	
+	
 
 	void update_Group_Scroll_Bar() {
 		groupe_list.removeAll();
@@ -295,9 +463,7 @@ public class Client {
 			JButton ngroupe = new JButton(groupe_contact.pseudo);
 			groupe_button_list.add(ngroupe);
 			ngroupe.addActionListener(e -> {
-				actual_chat = ngroupe.getText();
-				update_actual_chat();
-				update_Group_Scroll_Bar();
+				switch_to_groupe(ngroupe.getText());
 			});
 			
 			
@@ -334,6 +500,9 @@ public class Client {
 		int port = PARAMETRE.port;
 		Client moi = new Client("Gabriel");
 		moi.main_frame.setVisible(true);
+		
+		
+		
 		try {
 			Socket socket = new Socket(host, port);
 			BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
@@ -352,17 +521,14 @@ public class Client {
 					moi.main_frame.dispose();
 				}
 			});
+			
+			moi.info_membre_group.addActionListener(e -> {moi.afficher_membre(moi.actual_chat);});
+			moi.quitter_groupe.addActionListener(e -> {moi.partir_groupe(moi.actual_chat, out);});
+			moi.ajouter_membre.addActionListener(e -> {moi.ajouter_membre(moi.actual_chat, out);});
+			
 
 			moi.send_message.addActionListener(e -> {
-				try {
-					moi.envoie_message("MESSAGE_TO", moi.actual_chat, moi.chatInput.getText(), out);
-				} catch (Exception e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				moi.update_actual_chat();
-				moi.update_Group_Scroll_Bar();
-				moi.chatInput.setText("");
+				moi.lancer_envoie_message(out);
 			});
 
 			moi.register(out, console, in);
@@ -391,32 +557,33 @@ public class Client {
 
 			});
 			ecoute.start();
-			/**
-			 * Thread clavier = new Thread(() -> {// ceci est un thread mais pas le meme
-			 * String message; try { while ((message = console.readLine()) != null) { if
-			 * (message.equalsIgnoreCase("bye")) { socket.close();
-			 * JOptionPane.showMessageDialog(moi.main_frame, "Au revoir et à bientôt :DD");
-			 * } else if (message.toLowerCase().equals("quoi") ||
-			 * message.toLowerCase().equals("quoi?") || message.toLowerCase().equals("quoi
-			 * ?")) { JOptionPane.showMessageDialog(moi.main_frame, "Feur !");
-			 * moi.envoie_message("MESSAGE_TO", "global", "Je suis un gros nullos qui a dit
-			 * quoi dites moi tous feur !", out); } else if
-			 * (message.contains("creerGroupe")) { String[] tab = message.split("\\|", 3);
-			 * moi.creer_groupe(tab[1], new
-			 * ArrayList<String>(Arrays.asList(tab[2].split("\\|"))), out); } else if
-			 * (message.contains("MP")) { String[] tab = message.split("\\|");
-			 * moi.envoie_message("MESSAGE_TO", tab[1], tab[2], out);
-			 * 
-			 * } else { System.out.print(moi.pseudo + " : "); // au
-			 * moi.envoie_message("MESSAGE_TO", "global", message, out); // on met "" car
-			 * pour l'instant on // envoit } // groupe global
-			 * 
-			 * } } catch (InvalidKeyException | NoSuchAlgorithmException |
-			 * NoSuchPaddingException | IOException e) { // TODO Auto-generated catch block
-			 * e.printStackTrace(); }
-			 * 
-			 * });
-			 **/
+			
+			KeyAdapter lancer_lenvoie = new KeyAdapter() {
+	            @Override
+	            public void keyPressed(KeyEvent e) {
+	                if (e.getKeyCode() == KeyEvent.VK_ENTER) {
+	                    if (!moi.chatInput.getText().isBlank()) {
+	                    	moi.lancer_envoie_message(out);
+	                    }
+	                }
+	            }
+			};
+			
+			moi.chatInput.addKeyListener(lancer_lenvoie);
+			
+			moi.main_frame.addWindowListener(new java.awt.event.WindowAdapter() {
+			    @Override
+			    public void windowClosing(java.awt.event.WindowEvent e) {
+			       try {
+					moi.envoie_message("DISCONNECT","server","",out);
+				   } catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				   }
+			    }
+			});
+			
+			
 		} catch (ConnectException h) {
 			JOptionPane.showMessageDialog(moi.main_frame,
 					"Nous sommes navré mais la connexion n'a pas pu être établie. Vérifiez votre IP ainsi que l'état du Réseau");
@@ -426,6 +593,20 @@ public class Client {
 		// clavier.start();
 
 	}
+
+	private void lancer_envoie_message(PrintWriter out) {
+		// TODO Auto-generated method stub
+		try {
+			envoie_message("MESSAGE_TO", actual_chat, chatInput.getText(), out);
+		} catch (Exception e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		update_actual_chat();
+		update_Group_Scroll_Bar();
+		chatInput.setText("");
+	}
+
 
 	/**
 	 * public static SecretKey echanger_AES() throws UnknownHostException,
@@ -577,11 +758,10 @@ public class Client {
 				break;
 			case "GROUP2":
 				String[] nom_et_membre_ban = decoupe[3].split(SEP, 2);
-				JOptionPane.showMessageDialog(main_frame, "Votre nom de groupe est :" + nom_et_membre_ban[0]);
-				if (nom_et_membre_ban[1] != null) {
-					System.out.println("Les membres suivant n'existe pas : " + nom_et_membre_ban[1].replace(SEP, " "));
-				}
+				JOptionPane.showMessageDialog(main_frame, "Votre nom de groupe est : " + nom_et_membre_ban[0]);
 				break;
+				
+			
 
 			case "GROUP3":
 
@@ -613,9 +793,29 @@ public class Client {
 				if ((groupe_trouve=get_group(groupe)) != null) {
 					groupe_trouve.users = new ArrayList<String>(Arrays.asList(membres1));
 				}
-        break;
+			
+				break;
+			case "HAS_LEAVED":
+				
+				String groupe_ = decoupe[1];
+				String membre = decoupe[2];
+				String message_adieu = decoupe[3];
+				if (message_adieu.strip().isBlank()) {
+					historique.get(decoupe[1]).add(new JLabel(membre+" a quitté le salon... sortez vos mouchoirs"));
+				}
+				else {
+					historique.get(decoupe[1]).add(new JLabel(membre+" a quitté le salon... ses derniers  : ''"+message_adieu+"''"));
+				}
+				
+				
+				if (groupe_.equals(actual_chat)) {
+					update_actual_chat();
+				}
+				
 			default:
+			
 				System.out.println(message);
+				
 			  break;
 			
 

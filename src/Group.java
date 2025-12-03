@@ -20,11 +20,13 @@ public class Group {
 	}
 
 	public void ajouter_membre(ClientRegistration client) {
-		this.membres.add(client);
+		if (!this.membres.contains(client))   this.membres.add(client);
 	}
 
-	public void retirer_membre(ClientRegistration client) {
-		this.membres.remove(client);
+	@SuppressWarnings("finally")
+	public boolean retirer_membre(ClientRegistration client) {
+		try {this.membres.remove(client); return true;}
+		finally {return false;}
 	}
 
 	public ArrayList<ClientRegistration> get_membres() {
