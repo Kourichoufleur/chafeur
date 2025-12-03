@@ -100,7 +100,6 @@ public class Client {
 			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
 			IllegalBlockSizeException, BadPaddingException, ClassNotFoundException, IOException {
 		this.pseudo = pseudo;
-		register();
 
 		groupe_button_list = new ArrayList<>();
 
@@ -369,7 +368,7 @@ public class Client {
 			moi.register(out, console, in);
 
 			moi.add_group_btn.addActionListener(e -> {
-				moi.lancerCreationGroupe(out);
+				moi.lancerCreationGroupe(out, moi.get_other_users("global"));
 			});
 
 			// out =
@@ -381,9 +380,7 @@ public class Client {
 
 						moi.recevoir_message(message, out);
 
-		moi.add_group_btn.addActionListener(e -> {
-			moi.lancerCreationGroupe(out, moi.get_other_users("global"));
-		});
+
 					}
 				} catch (SocketException e) {
 					System.out.println("je suis plus la");

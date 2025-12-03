@@ -126,23 +126,6 @@ public class ClientRegistration implements Runnable {
 					}
 					all_names = all_names.substring(0, all_names.length()-1); // enlever la barre | en trop
 					Group nouveau = this.host.creer_groupe(nom_et_membres[0], membres);
-					
-					break;
-				case "GROUP1":
-					String[] nom_et_membres = message_slitted[3].split(SEP);
-					ArrayList<ClientRegistration> membres = new ArrayList<ClientRegistration>();
-					membres.add(this);
-					String non_existant = "";
-					ClientRegistration membre;
-					for (int i = 1; i < nom_et_membres.length; i++) {
-						if ((membre = host.find_by_pseudo(nom_et_membres[i])) != null) {
-							membres.add(membre);
-						} else {
-							non_existant += SEP + membre;
-						}
-
-					}
-					Group nouveau = this.host.creer_groupe(nom_et_membres[0], membres);
 					out.println(
 							"GROUP2" + SEP + "server" + SEP + pseudo + SEP + nouveau.nom_groupe + SEP + non_existant);
 					for (ClientRegistration clients : membres) {
@@ -151,6 +134,8 @@ public class ClientRegistration implements Runnable {
 								+ funcs.RSA_ENCRYPT(nouveau.cle_secrete, clients.cle_public)+SEP+all_names);
 
 					}
+					
+					break;
 				}
 
 			}
