@@ -1,11 +1,17 @@
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
+import java.net.ConnectException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
@@ -15,23 +21,21 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.util.ArrayList;
-<<<<<<< Updated upstream
-=======
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
->>>>>>> Stashed changes
+
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
-<<<<<<< Updated upstream
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
-=======
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -40,12 +44,17 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
->>>>>>> Stashed changes
+
 
 public class Client {
 	private int ID;
@@ -55,14 +64,42 @@ public class Client {
 	private PrivateKey cle_prive;
 	private PublicKey cle_public;
 	private ArrayList<Contact> contacts = new ArrayList<Contact>();
+	static final String SEP = PARAMETRE.SEP;
+
+	// COMPOSANTS GRAPHIQUES
+
+	// Fenetre Principale
+	private JFrame main_frame;
+	private GridBagLayout main_grid;
+	private GridBagConstraints c = new GridBagConstraints();
+	public static final String BASE_TITLE = "Chaffeur, le super chat sécurisé ! (ne dite jamais quoi)";
+
+	// Menu de gauche : liste des groupes
+	private JPanel groupe_list;
+	JScrollPane scroll_groupe;
+	private ArrayList<JButton> groupe_button_list;
+	private JButton add_group_btn;
+
+	// Demandes
+	private JButton demandeAlerteButton;
+
+	// Chat actuel
+	JTextField chatInput;
+	private JPanel chat_panel;
+	JLabel historychat;
+	JButton send_message;
+	JPanel entry_panel;
+	JPanel all_for_chat_panel;
+
+	// Historique des messages
+	private HashMap<String, ArrayList<JLabel>> historique = new HashMap<String, ArrayList<JLabel>>();
+	String actual_chat = "global";
+	private JScrollPane scroll_chat;
 
 	public Client(String pseudo)
 			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
 			IllegalBlockSizeException, BadPaddingException, ClassNotFoundException, IOException {
 		this.pseudo = pseudo;
-<<<<<<< Updated upstream
-		register();
-=======
 
 		groupe_button_list = new ArrayList<>();
 
@@ -88,7 +125,7 @@ public class Client {
 		// Chat panel
 		historique.put("global", new ArrayList<JLabel>());
 		act_msg_list().add(new JLabel(
-				"Voici le salon global ! Ici vous pouvez discuttez avec tous les nouveaux membres de Chafeur !"));
+				"Voici le salon global ! Ici vous pouvez discuter avec tous les nouveaux membres de Chafeur !"));
 
 		chatInput = new JTextField();
 		chatInput.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
@@ -279,7 +316,6 @@ public class Client {
 
 		groupe_list.revalidate();
 		groupe_list.repaint();
->>>>>>> Stashed changes
 	}
 
 	/**
@@ -289,120 +325,170 @@ public class Client {
 	 **/
 	public void make_unique_pseudo(int nb) {
 		this.pseudo = this.pseudo + String.valueOf(nb);
-		System.out.println("Votre pseudo a dû être modifié en " + this.pseudo);
+		updateTitle();
 	}
 
-	public static void main(String[] args) {
-		String host = PARAMETRE.host;
-		int port = PARAMETRE.port + 1;
-		SecretKey AES_key;
-		Cipher cipher = null;
-		try {
-			AES_key = echanger_AES();
-			cipher = Cipher.getInstance("AES");
-			cipher.init(Cipher.ENCRYPT_MODE, AES_key);
-		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException | IllegalBlockSizeException
-				| BadPaddingException | ClassNotFoundException | IOException e) {
-			e.printStackTrace();
-		}
-		boolean attendre = true;
-		while (attendre) {
-			try (Socket socket = new Socket(host, port);
-					BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
-					DataOutputStream out = new DataOutputStream(socket.getOutputStream());) {
-				attendre = false;
-				System.out.println("Connecté au serveur sur " + host + ":" + port);
-				System.out.println("Tape un message (ou 'bye' pour quitter) :");
-
-				String message;
-				while ((message = console.readLine()) != null) {
-					if (message.equalsIgnoreCase("bye")) {
-						out.writeInt(0);
-						out.flush();
-						break;
-					}
-					try {
-						byte[] encrypte = cipher.doFinal(message.getBytes());
-						out.writeInt(encrypte.length);
-						out.write(encrypte);
-						out.flush();
-					} catch (IllegalBlockSizeException | BadPaddingException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-
-				}
-				System.out.println("Client déconnecté.");
-			} catch (IOException e) {
-				try {
-					Thread.sleep(500);
-				} catch (InterruptedException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-					e.printStackTrace();
-				}
-
-			}
-		}
-	}
-
-	public static SecretKey echanger_AES()
-			throws UnknownHostException, IOException, NoSuchAlgorithmException, NoSuchPaddingException,
-			InvalidKeyException, IllegalBlockSizeException, BadPaddingException, ClassNotFoundException {
+	public static void main(String[] args) throws Exception {
 
 		String host = PARAMETRE.host;
 		int port = PARAMETRE.port;
-		Socket socket = new Socket(host, port);
-		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-		ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+		Client moi = new Client("Gabriel");
+		moi.main_frame.setVisible(true);
+		try {
+			Socket socket = new Socket(host, port);
+			BufferedReader console = new BufferedReader(new InputStreamReader(System.in));
+			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+			// sur la fermeture de la fenetre ca déconecte
+			moi.main_frame.addWindowListener(new WindowAdapter() {
+				@Override
+				public void windowClosing(WindowEvent e) {
+					try {
+						socket.close();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					moi.main_frame.dispose();
+				}
+			});
 
-		// On reçoit la clé publique du serveur
-		PublicKey rsaPublique = (PublicKey) in.readObject();
+			moi.send_message.addActionListener(e -> {
+				try {
+					moi.envoie_message("MESSAGE_TO", moi.actual_chat, moi.chatInput.getText(), out);
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+				moi.update_actual_chat();
+				moi.update_Group_Scroll_Bar();
+				moi.chatInput.setText("");
+			});
 
-		// On génère sa clé privée
-		KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-		keyGen.init(128);
-		SecretKey aesKey = keyGen.generateKey();
+			moi.register(out, console, in);
 
-<<<<<<< Updated upstream
-		Cipher cipherRSA = Cipher.getInstance("RSA");
-		cipherRSA.init(Cipher.ENCRYPT_MODE, rsaPublique);
-		byte[] aesChiffree = cipherRSA.doFinal(aesKey.getEncoded());
-=======
-		moi.add_group_btn.addActionListener(e -> {
-			moi.lancerCreationGroupe(out, moi.get_other_users("global"));
-		});
->>>>>>> Stashed changes
+			moi.add_group_btn.addActionListener(e -> {
+				moi.lancerCreationGroupe(out, moi.get_other_users("global"));
+			});
 
-		out.writeObject(aesChiffree);
-		out.flush();
+			// out =
+			// BufferedReader in =
+			Thread ecoute = new Thread(() -> { // ceci est un thread
+				String message;
+				try {
+					while ((message = in.readLine()) != null) {
 
-		System.out.println("Clé AES envoyée au serveur !");
-		return aesKey;
+						moi.recevoir_message(message, out);
+
+		
+					}
+				} catch (SocketException e) {
+					System.out.println("je suis plus la");
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+
+			});
+			ecoute.start();
+			/**
+			 * Thread clavier = new Thread(() -> {// ceci est un thread mais pas le meme
+			 * String message; try { while ((message = console.readLine()) != null) { if
+			 * (message.equalsIgnoreCase("bye")) { socket.close();
+			 * JOptionPane.showMessageDialog(moi.main_frame, "Au revoir et à bientôt :DD");
+			 * } else if (message.toLowerCase().equals("quoi") ||
+			 * message.toLowerCase().equals("quoi?") || message.toLowerCase().equals("quoi
+			 * ?")) { JOptionPane.showMessageDialog(moi.main_frame, "Feur !");
+			 * moi.envoie_message("MESSAGE_TO", "global", "Je suis un gros nullos qui a dit
+			 * quoi dites moi tous feur !", out); } else if
+			 * (message.contains("creerGroupe")) { String[] tab = message.split("\\|", 3);
+			 * moi.creer_groupe(tab[1], new
+			 * ArrayList<String>(Arrays.asList(tab[2].split("\\|"))), out); } else if
+			 * (message.contains("MP")) { String[] tab = message.split("\\|");
+			 * moi.envoie_message("MESSAGE_TO", tab[1], tab[2], out);
+			 * 
+			 * } else { System.out.print(moi.pseudo + " : "); // au
+			 * moi.envoie_message("MESSAGE_TO", "global", message, out); // on met "" car
+			 * pour l'instant on // envoit } // groupe global
+			 * 
+			 * } } catch (InvalidKeyException | NoSuchAlgorithmException |
+			 * NoSuchPaddingException | IOException e) { // TODO Auto-generated catch block
+			 * e.printStackTrace(); }
+			 * 
+			 * });
+			 **/
+		} catch (ConnectException h) {
+			JOptionPane.showMessageDialog(moi.main_frame,
+					"Nous sommes navré mais la connexion n'a pas pu être établie. Vérifiez votre IP ainsi que l'état du Réseau");
+			moi.main_frame.dispose();
+		}
+		;
+		// clavier.start();
+
 	}
 
+	/**
+	 * public static SecretKey echanger_AES() throws UnknownHostException,
+	 * IOException, NoSuchAlgorithmException, NoSuchPaddingException,
+	 * InvalidKeyException, IllegalBlockSizeException, BadPaddingException,
+	 * ClassNotFoundException {
+	 * 
+	 * String host = PARAMETRE.host; int port = PARAMETRE.port; Socket socket = new
+	 * Socket(host, port); ObjectOutputStream out = new
+	 * ObjectOutputStream(socket.getOutputStream()); ObjectInputStream in = new
+	 * ObjectInputStream(socket.getInputStream());
+	 * 
+	 * // On reçoit la clé publique du serveur PublicKey rsaPublique = (PublicKey)
+	 * in.readObject();
+	 * 
+	 * // On génère sa clé privée KeyGenerator keyGen =
+	 * KeyGenerator.getInstance("AES"); keyGen.init(128); SecretKey aesKey =
+	 * keyGen.generateKey();
+	 * 
+	 * Cipher cipherRSA = Cipher.getInstance("RSA");
+	 * cipherRSA.init(Cipher.ENCRYPT_MODE, rsaPublique); byte[] aesChiffree =
+	 * cipherRSA.doFinal(aesKey.getEncoded());
+	 * 
+	 * out.writeObject(aesChiffree); out.flush();
+	 * 
+	 * System.out.println("Clé AES envoyée au serveur !"); return aesKey; }
+	 **/
+
 	// Se connecte au serveur avec le port en paramètre
-	public void register() throws UnknownHostException, IOException, NoSuchAlgorithmException, NoSuchPaddingException,
-			InvalidKeyException, IllegalBlockSizeException, BadPaddingException, ClassNotFoundException {
-		assert this.pseudo != null && this.pseudo.length() > 1; // Un pseudo doit etre présent avec de se register
+
+	public void updateTitle() {
+		String title = Client.BASE_TITLE;
+		if (pseudo != "" && pseudo != null) {
+			title = title + " | VOTRE PSEUDO : " + (pseudo);
+		}
+		main_frame.setTitle(title);
+	}
+
+	public void register(PrintWriter out, BufferedReader clavier_console, BufferedReader in) throws Exception {
 		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
 		keyGen.initialize(2048);
 		KeyPair keyPair = keyGen.generateKeyPair();
-
 		this.cle_public = keyPair.getPublic();
 		this.cle_prive = keyPair.getPrivate();
-
+		String pseudo = JOptionPane.showInputDialog(main_frame, "Choisissez votre pseudo !");
+		if (pseudo.equals("")) {
+			JOptionPane.showMessageDialog(main_frame, "Tu t'appeleras Gabriel alors ahah");
+			pseudo = "Gabriel";
+		}
 		this.envoie_message("CONNECT", "server",
-				this.pseudo + "|" + new String(this.cle_public.getEncoded(), StandardCharsets.UTF_8));
+				pseudo + SEP + Base64.getEncoder().encodeToString(this.cle_public.getEncoded()), out);
+
+		recevoir_message(in.readLine(), out);
+
 	}
 
-	public void creer_groupe(String nom, ArrayList<String> liste_ami) {
+	public void creer_groupe(String nom, ArrayList<String> liste_ami, PrintWriter out) {
 		try {
-			String mes_amis = "";
+			String mes_amis = nom;
 			for (String ami : liste_ami) {
-				mes_amis += ami + "|";
+				mes_amis += SEP + ami;
 			}
-			this.envoie_message("groupe_etape_1", nom, mes_amis);
+			this.envoie_message("GROUP1", "server", mes_amis, out);
 		} catch (InvalidKeyException | NoSuchAlgorithmException | NoSuchPaddingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -410,76 +496,75 @@ public class Client {
 
 	}
 
-	public void envoie_message(String intitule, String pseudo, String message)
+	public void envoie_message(String intitule, String destinataire, String message, PrintWriter out)
 			throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
-		if (pseudo.equals("server")) {
-			String host = PARAMETRE.host;
-			int port = PARAMETRE.port;
-			try (Socket socket = new Socket(host, port);
-					PrintWriter out = new PrintWriter(socket.getOutputStream(), true);) {
-
-				System.out.println("Connecté au serveur sur " + host + ":" + port);
-				out.println(intitule + "|server|" + message);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+		System.out.println(intitule + destinataire + message);
+		if (destinataire.equals("server")) {
+			out.println(intitule + SEP + this.pseudo + SEP + "server" + SEP + message);
 		} else {
 			for (Contact mon_ami : contacts) {// recherche de mon ami
-				if (mon_ami.pseudo.equals(pseudo)) {// si j'ai un ami
-					String host = PARAMETRE.host;
-					int port = PARAMETRE.port;
-					// tentative de conexion au serveur
-					try (Socket socket = new Socket(host, port);
-							PrintWriter out = new PrintWriter(socket.getOutputStream(), true);) {
-
-						System.out.println("Connecté au serveur sur " + host + ":" + port);
-						System.out.println("Tape un message (ou 'bye' pour quitter) :");
-
-						if (message.equalsIgnoreCase("bye")) {
-							out.println("bye||");
-							int[] tab = { 0 };
-							int bidule = tab[1];// euh non mais tkt
+				if (mon_ami.pseudo.equals(destinataire)) {// si j'ai un ami
+					try {
+						Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+						cipher.init(Cipher.ENCRYPT_MODE, mon_ami.la_clef);
+						byte[] encrypte = cipher.doFinal(message.getBytes());
+						if (intitule.equals(null)) {
+							intitule = "MESSAGE_TO";
 						}
-						try {
-							Cipher cipher = Cipher.getInstance("AES");
-							cipher.init(Cipher.ENCRYPT_MODE, mon_ami.la_clef);
-							byte[] encrypte = cipher.doFinal(message.getBytes());
-							if (intitule.equals(null)) {
-								intitule = "MESSAGE";
-							}
-							out.println(intitule + "|" + mon_ami.pseudo + "|"
-									+ new String(encrypte, StandardCharsets.UTF_8));
-						} catch (IllegalBlockSizeException | BadPaddingException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-
-					} catch (IOException e) {
+						out.println(intitule + SEP + this.pseudo + SEP + destinataire + SEP
+								+ Base64.getEncoder().encodeToString(encrypte));
+						act_msg_list().add(new JLabel("Vous : " + message));
+					} catch (IllegalBlockSizeException | BadPaddingException e) {
+						// TODO Auto-generated catch block
 						e.printStackTrace();
-					} catch (IndexOutOfBoundsException e) {
-						System.out.println("Je suis parti");
 					}
 
 				}
-			}
-		}
 
+			}
+
+		}
 	}
 	
 
-	public void recevoir_message(String message) {
+	public void recevoir_message(String message, PrintWriter out) throws Exception {
 		try {
 			boolean cond = true;
-			String[] decoupe = message.split("|", 3);
+			Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+			String[] decoupe = message.split(SEP, 4);
 			switch (decoupe[0]) {
-			case "message":
+			case "SET_PSEUDO":
+				String[] pseudo_et_cle_et_histo = decoupe[3].split(SEP);
+				System.out.println(Arrays.toString(pseudo_et_cle_et_histo));
+				this.pseudo = pseudo_et_cle_et_histo[0];
+				SecretKey clef = funcs.RSA_DECRYPT(pseudo_et_cle_et_histo[1], this.cle_prive);
+				this.contacts.add(new Contact("global", clef));
+				JOptionPane.showMessageDialog(main_frame, "Votre pseudo a été définit comme étant : " + this.pseudo);
+				cipher.init(Cipher.DECRYPT_MODE, clef);
+				for (int i = 2; i < pseudo_et_cle_et_histo.length; i++) {
+					String[] tab = pseudo_et_cle_et_histo[i].split(":", 2);
+					this.historique.get("global").add(new JLabel(tab[0] + ": "
+							+ new String(cipher.doFinal(Base64.getDecoder().decode(tab[1])), StandardCharsets.UTF_8)));
+				}
+				update_Group_Scroll_Bar();
+				updateTitle();
+				update_actual_chat();
+				break;
+			case "MESSAGE_FROM":
+
 				for (Contact mon_ami : contacts) {
-					if (mon_ami.pseudo.equals(decoupe[1])) {
+					if (mon_ami.pseudo.equals(decoupe[2])) {
 						// Decrypte le message et l'affiche
-						Cipher cipher = Cipher.getInstance("AES");
 						cipher.init(Cipher.DECRYPT_MODE, mon_ami.la_clef);
-						byte[] valeur = decoupe[2].getBytes(StandardCharsets.UTF_8);
-						System.out.println(mon_ami.pseudo + ":\n" + cipher.doFinal(valeur));
+						byte[] valeur = Base64.getDecoder().decode(decoupe[3]);
+						String msg_final = ("> " + decoupe[1] + ": "
+								+ new String(cipher.doFinal(valeur), StandardCharsets.UTF_8));
+						historique.get(decoupe[2]).add(new JLabel(msg_final));
+
+						if (decoupe[2].equals(actual_chat)) {
+							update_actual_chat();
+						}
+
 						cond = false;
 						break;
 
@@ -490,32 +575,17 @@ public class Client {
 					System.out.println("ne doit jamais arriver");
 				}
 				break;
-			case "groupe_etape_2":
-				// genere la clef aes l'encrypte avec chaque clef publique et envoie un message
-				// avec groupe_etape_3 le nom du groupe et les clefs aes séparé par des pipes
-				KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-				keyGen.init(128);
-				SecretKey aesKey = keyGen.generateKey();
-				contacts.add(new Contact(decoupe[1], aesKey));
-				String liste_clefs = "";
-				Cipher cipher = Cipher.getInstance("RSA");
-				for (String clef_public : decoupe[2].split("|")) {
-					cipher.init(Cipher.ENCRYPT_MODE,
-							new SecretKeySpec(clef_public.getBytes(StandardCharsets.UTF_8), "RSA"));
-					liste_clefs += cipher.doFinal(aesKey.getEncoded()) + "|";
-
+			case "GROUP2":
+				String[] nom_et_membre_ban = decoupe[3].split(SEP, 2);
+				JOptionPane.showMessageDialog(main_frame, "Votre nom de groupe est :" + nom_et_membre_ban[0]);
+				if (nom_et_membre_ban[1] != null) {
+					System.out.println("Les membres suivant n'existe pas : " + nom_et_membre_ban[1].replace(SEP, " "));
 				}
-				this.envoie_message("groupe_etape_3", decoupe[1], liste_clefs);
+				break;
 
-			case "groupe_etape_final":
+			case "GROUP3":
+
 				// création du groupe
-<<<<<<< Updated upstream
-				byte[] valeur = decoupe[2].getBytes(StandardCharsets.UTF_8);
-				Cipher cipher1 = Cipher.getInstance("RSA");
-				cipher1.init(Cipher.DECRYPT_MODE, this.cle_prive);
-				Contact nouvel_ami = new Contact(decoupe[1], new SecretKeySpec(cipher1.doFinal(valeur), "AES"));
-				contacts.add(nouvel_ami);
-=======
 				String[] nom_et_cle_et_membres = decoupe[3].split(SEP);
 				// System.out.println("new serv"+ nom_et_cle[0]);
 				Contact nouveau_contact = new Contact(nom_et_cle_et_membres[0], funcs.RSA_DECRYPT(nom_et_cle_et_membres[1], this.cle_prive));
@@ -528,12 +598,12 @@ public class Client {
 				}
 				
 				this.contacts.add(nouveau_contact);
-				
-
+        
 				// System.out.println("Vous etes dans le groupe : " + nom_et_cle[0]);
 				update_Group_Scroll_Bar();
 
 				break;
+
 			case "UPDATE_GROUP":
 				
 				String groupe = decoupe[1];
@@ -543,17 +613,17 @@ public class Client {
 				if ((groupe_trouve=get_group(groupe)) != null) {
 					groupe_trouve.users = new ArrayList<String>(Arrays.asList(membres1));
 				}
-				
+        break;
 			default:
 				System.out.println(message);
->>>>>>> Stashed changes
-				break;
+			  break;
 			
 
 			}
 
-		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException
-				| BadPaddingException e) {
+		} catch (NoSuchAlgorithmException | NoSuchPaddingException | InvalidKeyException | IllegalBlockSizeException |
+
+				BadPaddingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
