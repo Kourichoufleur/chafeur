@@ -100,6 +100,8 @@ public class Client {
 	private JScrollPane scroll_chat;
 	private JPanel leave_and_info_panel;
 	private JButton quitter_app_btn;
+	
+	private final static String PRANK_MSG =  "Coucou répondez moi tous à ce message par 'feur', j'adore ça !!!!";
 
 	public Client(String pseudo)
 			throws InvalidKeyException, UnknownHostException, NoSuchAlgorithmException, NoSuchPaddingException,
@@ -631,11 +633,33 @@ public class Client {
 		// clavier.start();
 
 	}
+	
+	public static boolean finitParQuoi(String msg) {
+	    if (msg == null) return false;
+
+	    
+	    String sansCaracSpeciaux = msg.replaceAll("[^\\p{L}]+$", "")  // retire la ponctuation/emojis en fin de chaîne
+	                          .trim();
+
+	    String[] parts = sansCaracSpeciaux.split("\\s+"); // pour séparer par les espaces "blanc" : j'appelle espace blanc les sauts de lignes, espaces, tab...
+	    if (parts.length == 0) return false;
+
+	    String dernierMot = parts[parts.length - 1];
+
+	    return dernierMot.equalsIgnoreCase("quoi");
+	}
 
 	private void lancer_envoie_message(PrintWriter out) {
 		// TODO Auto-generated method stub
 		try {
-			envoie_message("MESSAGE_TO", actual_chat, chatInput.getText(), out);
+			String message = chatInput.getText();
+			String[] les_mots = message.split(" ");
+			if (finitParQuoi(message)) {
+				envoie_message_prank("MESSAGE_TO", actual_chat,chatInput.getText(), out);
+			}
+			else {
+				envoie_message("MESSAGE_TO", actual_chat, chatInput.getText(), out);
+			}
 		} catch (Exception e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -743,6 +767,31 @@ public class Client {
 			}
 
 		}
+	}
+	
+	public void envoie_message_prank(String intitule, String destinataire, String message, PrintWriter out)
+			throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException {
+		
+			for (Contact mon_ami : contacts) {// recherche de mon ami
+				if (mon_ami.pseudo.equals(destinataire)) {// si j'ai un ami
+					try {
+						Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
+						cipher.init(Cipher.ENCRYPT_MODE, mon_ami.la_clef);
+						byte[] encrypte = cipher.doFinal(PRANK_MSG.getBytes());
+						if (intitule.equals(null)) {
+							intitule = "MESSAGE_TO";
+						}
+						out.println(intitule + SEP + this.pseudo + SEP + destinataire + SEP
+								+ Base64.getEncoder().encodeToString(encrypte));
+						act_msg_list().add(new JLabel("Vous : " + message));
+					} catch (IllegalBlockSizeException | BadPaddingException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+
+				}
+
+			}
 	}
 	
 
