@@ -132,7 +132,7 @@ public class Client {
 		// Chat panel
 		historique.put("global", new ArrayList<JLabel>());
 		act_msg_list().add(new JLabel(
-				"Voici le salon global ! Ici vous pouvez discuttez avec tous les nouveaux membres de Chafeur !"));
+				"Voici le groupe global ! Ici vous pouvez discuttez avec tous les nouveaux membres de Chafeur !"));
 
 		chatInput = new JTextField();
 		chatInput.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
@@ -367,7 +367,7 @@ public class Client {
 	
 	void partir_groupe(String groupe, PrintWriter out) {
 		if (groupe.equals("global")) {
-			JOptionPane.showMessageDialog(main_frame, "Vous ne pouvez pas quitter le salon publique principal !");
+			JOptionPane.showMessageDialog(main_frame, "Vous ne pouvez pas quitter le groupe publique principal !");
 		}
 		else {
 		JDialog dialog = new JDialog(main_frame, "Êtes vous sûr de vouloir partir du groupe "+groupe+"? Vous leur manquerez !", true);
@@ -842,14 +842,41 @@ public class Client {
 				String membre = decoupe[2];
 				String message_adieu = decoupe[3];
 				if (message_adieu.strip().isBlank()) {
-					historique.get(decoupe[1]).add(new JLabel(membre+" a quitté le salon... sortez vos mouchoirs"));
+					JLabel quitter = new JLabel(membre+" a quitté le groupe... sortez vos mouchoirs");
+					quitter.setForeground(Color.gray);
+					historique.get(decoupe[1]).add(quitter);
 				}
 				else {
-					historique.get(decoupe[1]).add(new JLabel(membre+" a quitté le salon... ses derniers mots : ''"+message_adieu+"''"));
+					JLabel quitter = new JLabel(membre+" a quitté le groupe... ses derniers mots : ''"+message_adieu+"''");
+					quitter.setForeground(Color.gray);
+					historique.get(decoupe[1]).add(quitter);
 				}
 				
 				
 				if (groupe_.equals(actual_chat)) {
+					update_actual_chat();
+				}
+				
+				break;
+			
+			case "HAS_JOINED":
+				
+				String groupe__ = decoupe[1];
+				String membre_ = decoupe[2];
+				String message_adieu_ = decoupe[3]; // bon devrais s'appeller bienvenu
+				if (message_adieu_.strip().isBlank()) {
+					JLabel bienvenu = new JLabel(membre_+" a rejoins le groupe !");
+					bienvenu.setForeground(Color.gray);
+					historique.get(decoupe[1]).add(bienvenu);
+				}
+				else {
+					JLabel bienvenu = new JLabel(membre_+" a rejoins le groupe ! Sa salutation : ''"+message_adieu_+"''");
+					bienvenu.setForeground(Color.gray);
+					historique.get(decoupe[1]).add(bienvenu);
+				}
+				
+				
+				if (groupe__.equals(actual_chat)) {
 					update_actual_chat();
 				}
 				

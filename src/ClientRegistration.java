@@ -73,6 +73,7 @@ public class ClientRegistration implements Runnable {
            
 					host.groupe_general.ajouter_membre(this);
 					host.broadcast("global", "UPDATE_GROUP"+SEP+"global"+SEP+host.stringOfMembers("global"));
+					host.broadcast("global", "HAS_JOINED"+SEP+"global"+SEP+this.pseudo+SEP+" ");
             
 					break;
 				case "MESSAGE_TO": // MESSAGE|de_qui|destinataire|contenu_message
@@ -128,12 +129,16 @@ public class ClientRegistration implements Runnable {
 					Group nouveau = this.host.creer_groupe(nom_et_membres[0], membres);
 					out.println(
 							"GROUP2" + SEP + "server" + SEP + pseudo + SEP + nouveau.nom_groupe + SEP + non_existant);
-					for (ClientRegistration clients : membres) {
+					for (ClientRegistration clients : nouveau.membres) {
 						PrintWriter out_clients = new PrintWriter(clients.socket.getOutputStream(), true);
 						
 						out_clients.println("GROUP3" + SEP + "server" + SEP + SEP + nouveau.nom_groupe + SEP
 								+ funcs.RSA_ENCRYPT(nouveau.cle_secrete, clients.cle_public)+SEP+all_names);
-
+						
+					}
+					
+					for (ClientRegistration client : nouveau.membres) {
+						host.broadcast(nouveau.nom_groupe, "HAS_JOINED"+SEP+nouveau.nom_groupe+SEP+client.pseudo+SEP+" ");
 					}
 					
 					break;
@@ -144,7 +149,7 @@ public class ClientRegistration implements Runnable {
 					try {
 					host.retirer_personne(this, nom_du_groupe);
 					host.broadcast(nom_du_groupe, "UPDATE_GROUP"+SEP+nom_du_groupe+SEP+host.stringOfMembers(nom_du_groupe)+SEP);
-					host.broadcast(nom_du_groupe, "HAS_LEAVED"+SEP+nom_du_groupe+SEP+pseudo);
+					host.broadcast(nom_du_groupe, "HAS_LEAVED"+SEP+nom_du_groupe+SEP+pseudo+SEP+"");
 						}
 					finally {}
 					

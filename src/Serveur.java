@@ -260,6 +260,8 @@ public class Serveur {
 				PrintWriter out_clients = new PrintWriter(membre.socket.getOutputStream(), true);
 				out_clients.println("GROUP3" + SEP + "server" + SEP + SEP + le_groupe.nom_groupe + SEP
 				+ funcs.RSA_ENCRYPT(le_groupe.cle_secrete, membre.cle_public)+SEP+all_pseudo(le_groupe));
+				
+				broadcast(nom_groupe, "HAS_JOINED"+SEP+nom_groupe+SEP+membre.pseudo+SEP+" ");
 			}
 			
 			
