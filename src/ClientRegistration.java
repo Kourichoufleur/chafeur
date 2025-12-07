@@ -11,6 +11,9 @@ import java.util.Arrays;
 
 import javax.crypto.SecretKey;
 
+
+/**Chaque client qui se connecte au serveur fait ouvrir une instance de ClientRegistration qui stock les informations du clients et gère ses requetes.
+ **/
 public class ClientRegistration implements Runnable {
 	Socket socket;
 	InputStream in;
@@ -21,68 +24,64 @@ public class ClientRegistration implements Runnable {
 	Serveur host;
 	String cle_public;
 	static final String SEP = PARAMETRE.SEP;
-
+	
+	/** Créer un client avec son pseudo, son IP (pourrait servir mais n'est pas utilisé dans cette version), la socket de connexion et le serveur qui l'instancie
+	 */
 	public ClientRegistration(String pseudo, String IP, Socket socket, Serveur serveur) throws IOException {
 		this.socket = socket;
 		this.in = socket.getInputStream();
 		this.out = socket.getOutputStream();
 		this.pseudo = pseudo;
-		this.IP = IP;
+		this.IP = IP; 
 		this.host = serveur;
 	}
 
-	// Avec ce script on peut lire ce que le client envoit et traiter les demandes.
-	// En gros le serveur sert à faire le lien entre cette classe et la classe
-	// client de l'appareil de l'utilisateur
-	// Toutes les instances de ClientRegistration sont faite sur le PC de l'hote
-	// Le serveur va donc lancer des threads de cette classe ; cette classe étant ce
-	// qui "traite" la connexion
+	/** Avec ce script on peut lire ce que le client envoit et traiter les demandes.
+	/* Toutes les instances de ClientRegistration sont faite sur le PC de l'hote
+	/* Le serveur va donc lancer des threads de cette classe ; cette classe étant ce
+	qui "traite" la connexion
+	*/ 
 
-	// A IMPLEMENTER :
-	// je rajouterais la demande d'un pseudo (faut aussi obtenir l'IP)
-	// Quand on recevra les demandes d'envoie de message, il faudra une fonction
-	// dans la classe Serveur pour faire
-	// le partage de clés + l'envoie du message
-	// En gros ca va faire ClientRegistration.
 	@Override
 	public void run() {
 		try {
-			System.out.println("Client registration bien lancé !");
 			BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
 			String message;
 			while ((message = in.readLine()) != null) {
-				System.out.println("J'ai recu " + message);
+					
 				// Attente que le client envoie quelque chose
 
-				String[] message_slitted = message.split(SEP, 4);
+				String[] message_slitted = message.split(SEP, 4); // je split le message en 4 pour traiter chaque bout differemment 
 				String type_message = message_slitted[0];
-				System.out.println(type_message);
-				System.out.println(Arrays.toString(message_slitted));
-				switch (type_message) {
+				switch (type_message) { // premier bout : categorie de la requete : envoie de message, demande connection, etc.
+				
 				case "CONNECT": // CONNEXT|Gabriel|Server|((pseudo|cle_publique)) -> Contenu
-					System.out.println("Tentative de connexion");
-					String[] new_split = message_slitted[3].split(SEP);
+					String[] new_split = message_slitted[3].split(SEP); // le reste des info est stocké dans message_slitted[3]
 					String clientPseudo = new_split[0];
 					String clientClePublique = new_split[1];
 					this.pseudo = this.host.rendre_unique(clientPseudo);
 					this.cle_public = clientClePublique;
+					// pour que l'utilisateur qui se connecte sache son pseudo final :
 					out.println("SET_PSEUDO" + SEP + "server" + SEP + SEP + this.pseudo + SEP
 							+ funcs.RSA_ENCRYPT(host.groupe_general.cle_secrete, clientClePublique)
 							+ host.groupe_general.histo_to_msg());// il y a déja SEP au début de histo_to_msg
            
+					// je l'ajoute au serveur et envoit a tous les membres de global qu'il a rejoins le serveur
 					host.groupe_general.ajouter_membre(this);
 					host.broadcast("global", "UPDATE_GROUP"+SEP+"global"+SEP+host.stringOfMembers("global"));
 					host.broadcast("global", "HAS_JOINED"+SEP+"global"+SEP+this.pseudo+SEP+" ");
             
 					break;
+					
 				case "MESSAGE_TO": // MESSAGE|de_qui|destinataire|contenu_message
 					// Gérer l'envoie de message
 					String destinataire = message_slitted[2];
 					String contenu_message = message_slitted[3];
 					ClientRegistration client_destinataire = host.find_by_pseudo(destinataire);
-					if (client_destinataire != null) {
-						// unused
+					if (client_destinataire != null) { // Si destinataire est le pseudo de quelqu'un
+						// Plus utilisé car on ne gère pas les messages privés, seulement on fait des groupes privés. Mais nous l'avons laissé au cas où on réimplémente cette 
+						// Fonctionnalité
 						PrintWriter out_destinataire = new PrintWriter(client_destinataire.socket.getOutputStream(),
 								true);
 						out_destinataire.println(
@@ -107,8 +106,8 @@ public class ClientRegistration implements Runnable {
 					}
 		
 					break;
-				case "GROUP1":
-					String[] nom_et_membres = message_slitted[3].split(SEP);
+				case "GROUP1": // debut de la creation du groupe
+					String[] nom_et_membres = message_slitted[3].split(SEP); // premier element : nom du groupe, les autres : nom des membres
 					ArrayList<ClientRegistration> membres = new ArrayList<ClientRegistration>();
 					
 					String non_existant = "";
@@ -127,23 +126,24 @@ public class ClientRegistration implements Runnable {
 					}
 					all_names = all_names.substring(0, all_names.length()-1); // enlever la barre | en trop
 					Group nouveau = this.host.creer_groupe(nom_et_membres[0], membres);
-					out.println(
-							"GROUP2" + SEP + "server" + SEP + pseudo + SEP + nouveau.nom_groupe + SEP + non_existant);
+					out.println("GROUP2" + SEP + "server" + SEP + pseudo + SEP + nouveau.nom_groupe + SEP + non_existant); // on dit au createur le nom final de son groupe
 					for (ClientRegistration clients : nouveau.membres) {
 						PrintWriter out_clients = new PrintWriter(clients.socket.getOutputStream(), true);
 						
 						out_clients.println("GROUP3" + SEP + "server" + SEP + SEP + nouveau.nom_groupe + SEP
 								+ funcs.RSA_ENCRYPT(nouveau.cle_secrete, clients.cle_public)+SEP+all_names);
+						// pour que chaque personne appartenant au groupe est sur leur PC le groupe qui s'ajoute + avec la liste des membres
 						
 					}
 					
 					for (ClientRegistration client : nouveau.membres) {
 						host.broadcast(nouveau.nom_groupe, "HAS_JOINED"+SEP+nouveau.nom_groupe+SEP+client.pseudo+SEP+" ");
+						// puis on fais apparaitre une notification pour chaque utilisateur qui rejoins
 					}
 					
 					break;
 					
-				case "LEAVE_GROUP":
+				case "LEAVE_GROUP": // le client demande a quuitter un groupe
 					String nom_du_groupe = message_slitted[1];
 					
 					try {
@@ -156,9 +156,9 @@ public class ClientRegistration implements Runnable {
 					
 					
 					break;
-				case "ADD_TO_GROUP" :
+				case "ADD_TO_GROUP" : // le client veut ajouter des membres à un groupe
 					String groupe = message_slitted[1];
-					String[] membres_update = message_slitted[3].split("\\|");
+					String[] membres_update = message_slitted[3].split("\\|"); // pour avoir la liste des membres
 					ArrayList<ClientRegistration> membres_a_updates = new ArrayList<ClientRegistration>();
 					for (String membre_ : membres_update) {
 						ClientRegistration membre_trouve = host.find_by_pseudo(membre_);
@@ -166,18 +166,19 @@ public class ClientRegistration implements Runnable {
 							membres_a_updates.add(membre_trouve);
 						}
 					}
-					host.ajouter_membres_et_update(groupe, membres_a_updates);
+					host.ajouter_membres_et_update(groupe, membres_a_updates); // le serveur gere le reste
 					break;
 				case "DISCONNECT" :
-					host.deconnect(this, message_slitted[3]);
+					host.deconnect(this, message_slitted[3]); // le serveur gere la deconnection
 					break;
 				}
 			
 
 			}
 			
+			// Si on recoit plus rien, l'utilisateur est considéré comme déconnecté
 			host.deconnect(this);
-			// Maintenant on récupère sa clé publique sans demandé à l'utilisateur
+			
 
 		} catch (
 

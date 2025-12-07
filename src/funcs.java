@@ -9,12 +9,17 @@ import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+/**Une classe contenant des methodes statiques bien utiles
+ **/
 public class funcs {
+	
+	
 	static SecretKey RSA_DECRYPT(String tableau, PrivateKey clef_privee) throws Exception {
 		Cipher cipher = Cipher.getInstance("RSA");
 		cipher.init(Cipher.DECRYPT_MODE, clef_privee);
 		return new SecretKeySpec(cipher.doFinal(stringToByte_Mais_pff(tableau)), "AES");
 	}
+
 
 	static String RSA_ENCRYPT(SecretKey clef_aes, String tableau) throws Exception {
 		Cipher cipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
@@ -25,7 +30,11 @@ public class funcs {
 		return Arrays.toString(cipher.doFinal(clef_aes.getEncoded()));
 
 	}
-
+	
+	/**
+	 * prend un string qui représente un tableau de byte et ça renvoie le tableau de byte
+	 * @param tableau un string de la forme [..., ..., ...]
+	 */
 	static byte[] stringToByte_Mais_pff(String tableau) {
 		tableau = tableau.substring(1, tableau.length() - 1);
 		String[] tab = tableau.split(", ");
